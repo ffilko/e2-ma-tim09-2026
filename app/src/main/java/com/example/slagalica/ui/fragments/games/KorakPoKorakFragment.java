@@ -54,32 +54,29 @@ public class KorakPoKorakFragment extends Fragment {
     }
 
     private void addDummySteps() {
-        // Boja tvoje aplikacije (izvučena iz resursa)
         int slagalicaColor = getResources().getColor(R.color.slagalica_color);
 
         for (int i = 1; i <= 7; i++) {
             TextView tv = new TextView(requireContext());
             tv.setText("Korak " + i + " — neki tekst");
 
-            // 1. Unutrašnji razmak (padding) da tekst ne udara u ivice pravougaonika
+
             tv.setPadding(32, 24, 32, 24);
-            tv.setTextColor(android.graphics.Color.WHITE); // Beli tekst na tamnoj pozadini
+            tv.setTextColor(android.graphics.Color.WHITE);
             tv.setTextSize(16f);
 
-            // 2. Kreiranje pravougaonika sa zaobljenim uglovima
             android.graphics.drawable.GradientDrawable shape = new android.graphics.drawable.GradientDrawable();
             shape.setShape(android.graphics.drawable.GradientDrawable.RECTANGLE);
-            shape.setCornerRadius(15f); // Zaobljeni uglovi
-            shape.setColor(slagalicaColor); // Boja unutrašnjosti
+            shape.setCornerRadius(15f);
+            shape.setColor(slagalicaColor);
 
             tv.setBackground(shape);
 
-            // 3. Spoljašnji razmak (margina) između koraka
             LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
                     LinearLayout.LayoutParams.MATCH_PARENT,
                     LinearLayout.LayoutParams.WRAP_CONTENT
             );
-            params.setMargins(0, 0, 0, 16); // 16px razmaka ispod svakog pravougaonika
+            params.setMargins(0, 0, 0, 16);
             tv.setLayoutParams(params);
 
             llClues.addView(tv);

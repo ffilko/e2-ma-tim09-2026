@@ -29,7 +29,7 @@ public class MojBrojFragment extends Fragment {
     private TextView tvTarget, tvExpression;
     private GridLayout gridNumbers;
     private StringBuilder expression = new StringBuilder();
-    private View mainRootView; // Čuvamo referencu na koren layout-a
+    private View mainRootView;
 
     @Nullable
     @Override
@@ -58,13 +58,11 @@ public class MojBrojFragment extends Fragment {
             Button btn = new Button(requireContext());
             btn.setText(String.valueOf(num));
 
-            // Dodajemo LayoutParams za GridLayout
             GridLayout.LayoutParams params = new GridLayout.LayoutParams();
-            // Postavljamo širinu na 0 i težinu na 1 da bi se ravnomerno rasporedili
             params.width = 0;
             params.height = ViewGroup.LayoutParams.WRAP_CONTENT;
             params.columnSpec = GridLayout.spec(GridLayout.UNDEFINED, 1f);
-            params.setMargins(4, 4, 4, 4); // Malo razmaka između brojeva
+            params.setMargins(4, 4, 4, 4);
 
             btn.setLayoutParams(params);
 

@@ -15,11 +15,9 @@ import com.example.slagalica.ui.fragments.games.MojBrojFragment;
 
 public class GameFragment extends Fragment {
 
-    // Lista klasa fragmenata koji predstavljaju igre po redu
     private final Class<? extends Fragment>[] games = new Class[]{
             KorakPoKorakFragment.class,
             MojBrojFragment.class
-            // Ovde ćeš samo dodavati nove klase: npr. SkockoFragment.class, SpojniceFragment.class...
     };
 
     private int currentGameIndex = 0;
@@ -33,7 +31,6 @@ public class GameFragment extends Fragment {
     public void onViewCreated( View view,  Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
 
-        // Slušamo "game_finished" događaj od bilo kog deteta
         getChildFragmentManager().setFragmentResultListener("game_finished", getViewLifecycleOwner(), (requestKey, bundle) -> {
             loadNextGame();
         });
@@ -62,7 +59,6 @@ public class GameFragment extends Fragment {
                 e.printStackTrace();
             }
         } else {
-            // Sve igre su završene - vrati se u meni ili prikaži rezultate
             if (getActivity() instanceof MainActivity) {
                 ((MainActivity) getActivity()).navigate(new GameMenuFragment(), false);
             }
