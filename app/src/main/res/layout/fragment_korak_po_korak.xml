@@ -1,0 +1,103 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    tools:context=".ui.fragments.games.KorakPoKorakFragment">
+
+    <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:orientation="vertical"
+        android:padding="16dp">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:layout_marginBottom="8dp">
+
+            <TextView
+                android:id="@+id/tvRound"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:textSize="18sp"
+                android:textStyle="bold"
+                android:text="Runda 1/2"/>
+
+            <TextView
+                android:id="@+id/tvTimer"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:textSize="24sp"
+                android:textStyle="bold"
+                android:textColor="@color/slagalica_color"
+                android:text="10.0"/>
+        </LinearLayout>
+
+        <TextView
+            android:id="@+id/tvPhase"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:textSize="14sp"
+            android:gravity="center"
+            android:layout_marginBottom="4dp"
+            android:text="Igrač 1 pogađa"/>
+
+        <!-- Skorovi -->
+        <TextView
+            android:id="@+id/tvScores"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center"
+            android:textSize="14sp"
+            android:layout_marginBottom="12dp"
+            android:text="Igrač 1: 0  |  Igrač 2: 0"/>
+
+        <!-- Otkriveni koraci -->
+        <ScrollView
+            android:id="@+id/scrollClues"
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1"
+            android:layout_marginBottom="12dp">
+
+            <LinearLayout
+                android:id="@+id/llClues"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:divider="?android:listDivider"
+                android:showDividers="middle"/>
+        </ScrollView>
+
+        <!-- Unos odgovora -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical">
+
+            <EditText
+                android:id="@+id/etGuess"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:hint="Unesite odgovor..."
+                android:inputType="text"
+                android:imeOptions="actionDone"
+                android:layout_marginEnd="8dp"/>
+
+            <Button
+                android:id="@+id/btnGuess"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Potvrdi"
+                android:backgroundTint="@color/slagalica_color"/>
+        </LinearLayout>
+
+    </LinearLayout>
+
+</FrameLayout>
