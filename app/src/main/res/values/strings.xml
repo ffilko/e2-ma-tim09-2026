@@ -16,5 +16,7 @@
     <string name="column_c_hint">Kolona C</string>
     <string name="column_d_hint">Kolona D</string>
     <string name="final_answer_hint">Finalni odgovor</string>
-    <string name="submit_associations">Potvrdi svoj odgovor</string>
+    <string name="submit_associations">Potvrdi</string>
+    <string name="skocko_submit">Potvrdi</string>
+    <string name="skocko_delete">Obriši</string>
 </resources>
