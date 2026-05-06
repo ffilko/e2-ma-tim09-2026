@@ -11,4 +11,10 @@
     <string name="login_failed">"Login failed"</string>
     <!-- TODO: Remove or change this placeholder text -->
     <string name="hello_blank_fragment">Hello blank fragment</string>
+    <string name="column_a_hint">Kolona A</string>
+    <string name="column_b_hint">Kolona B</string>
+    <string name="column_c_hint">Kolona C</string>
+    <string name="column_d_hint">Kolona D</string>
+    <string name="final_answer_hint">Finalni odgovor</string>
+    <string name="submit_associations">Potvrdi svoj odgovor</string>
 </resources>

@@ -89,17 +89,15 @@ public class MojBrojFragment extends Fragment {
             tvExpression.setText("");
         });
 
-        // STOP dugme - sada simulira kraj unosa i blokira UI
         view.findViewById(R.id.btnStop).setOnClickListener(v -> {
             disableAllInputsExceptSubmit();
         });
 
-        // Potvrdi rešenje - vodi nazad na Game Menu
         Button btnSubmit = view.findViewById(R.id.btnSubmit);
         btnSubmit.setOnClickListener(v -> {
-            if (getActivity() instanceof com.example.slagalica.MainActivity) {
-                ((com.example.slagalica.MainActivity) getActivity()).navigate(new com.example.slagalica.GameMenuFragment(), false);
-            }
+            Bundle result = new Bundle();
+            result.putBoolean("finished", true);
+            getParentFragmentManager().setFragmentResult("game_finished", result);
         });
     }
 

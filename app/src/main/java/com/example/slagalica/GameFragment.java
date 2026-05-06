@@ -9,6 +9,7 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 
+import com.example.slagalica.ui.fragments.games.AsocijacijeFragment;
 import com.example.slagalica.ui.fragments.games.KorakPoKorakFragment;
 import com.example.slagalica.ui.fragments.games.MojBrojFragment;
 
@@ -17,7 +18,8 @@ public class GameFragment extends Fragment {
 
     private final Class<? extends Fragment>[] games = new Class[]{
             KorakPoKorakFragment.class,
-            MojBrojFragment.class
+            MojBrojFragment.class,
+            AsocijacijeFragment.class
     };
 
     private int currentGameIndex = 0;
