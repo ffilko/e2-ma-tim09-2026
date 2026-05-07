@@ -9,15 +9,19 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 
+import com.example.slagalica.ui.fragments.games.AsocijacijeFragment;
 import com.example.slagalica.ui.fragments.games.KorakPoKorakFragment;
 import com.example.slagalica.ui.fragments.games.MojBrojFragment;
+import com.example.slagalica.ui.fragments.games.SkockoFragment;
 
 
 public class GameFragment extends Fragment {
 
     private final Class<? extends Fragment>[] games = new Class[]{
             KorakPoKorakFragment.class,
-            MojBrojFragment.class
+            MojBrojFragment.class,
+            AsocijacijeFragment.class,
+            SkockoFragment.class
     };
 
     private int currentGameIndex = 0;
