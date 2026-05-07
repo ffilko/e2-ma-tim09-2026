@@ -19,4 +19,18 @@
     <string name="submit_associations">Potvrdi</string>
     <string name="skocko_submit">Potvrdi</string>
     <string name="skocko_delete">Obriši</string>
+    <string name="naslov_notifikacije">Obaveštenja</string>
+    <string name="oznaci_procitano">Označi kao pročitano</string>
+    <string-array name="status_options">
+        <item>Svi statusi</item>
+        <item>Nepročitane</item>
+        <item>Pročitane</item>
+    </string-array>
+    <string-array name="category_options">
+        <item>Sve kategorije</item>
+        <item>Poruke u četu</item>
+        <item>Rangiranje</item>
+        <item>Nagrade</item>
+        <item>Ostalo</item>
+    </string-array>
 </resources>
