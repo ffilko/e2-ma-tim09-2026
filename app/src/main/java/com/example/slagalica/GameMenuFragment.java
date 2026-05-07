@@ -15,6 +15,7 @@ public class GameMenuFragment extends Fragment {
                              Bundle savedInstanceState) {
         View view = inflater.inflate(R.layout.fragment_game_menu, container, false);
         view.findViewById(R.id.btnStartGame).setOnClickListener(v -> ((MainActivity) requireActivity()).navigate(new GameFragment(), true));
+        view.findViewById(R.id.btnBellIcon).setOnClickListener(v -> ((MainActivity) requireActivity()).navigate(new NotificationsFragment(), true));
         return view;
     }
 }
