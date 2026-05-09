@@ -1,27 +1,28 @@
 package com.example.slagalica;
 
 import android.os.Bundle;
-
 import androidx.fragment.app.Fragment;
 import androidx.fragment.app.FragmentTransaction;
-
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 
 import com.example.slagalica.ui.fragments.games.AsocijacijeFragment;
+import com.example.slagalica.ui.fragments.games.KoZnaZnaFragment;
 import com.example.slagalica.ui.fragments.games.KorakPoKorakFragment;
 import com.example.slagalica.ui.fragments.games.MojBrojFragment;
 import com.example.slagalica.ui.fragments.games.SkockoFragment;
-
+import com.example.slagalica.ui.fragments.games.SpojniceFragment;
 
 public class GameFragment extends Fragment {
 
     private final Class<? extends Fragment>[] games = new Class[]{
-            KorakPoKorakFragment.class,
-            MojBrojFragment.class,
+            KoZnaZnaFragment.class,
+            SpojniceFragment.class,
             AsocijacijeFragment.class,
-            SkockoFragment.class
+            SkockoFragment.class,
+            KorakPoKorakFragment.class,
+            MojBrojFragment.class
     };
 
     private int currentGameIndex = 0;
@@ -32,7 +33,7 @@ public class GameFragment extends Fragment {
     }
 
     @Override
-    public void onViewCreated( View view,  Bundle savedInstanceState) {
+    public void onViewCreated(View view, Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
 
         getChildFragmentManager().setFragmentResultListener("game_finished", getViewLifecycleOwner(), (requestKey, bundle) -> {
