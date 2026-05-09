@@ -1,0 +1,157 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:fillViewport="true"
+    android:background="@color/app_background">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="16dp">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:layout_marginBottom="8dp">
+
+            <TextView
+                android:id="@+id/tvRound"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="Runda 1/1"
+                android:textSize="18sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/tvTimer"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="25s"
+                android:textSize="24sp"
+                android:textStyle="bold"
+                android:textColor="@color/slagalica_color" />
+        </LinearLayout>
+
+        <TextView
+            android:id="@+id/tvPhase"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Igrač 1 odgovara"
+            android:textSize="14sp"
+            android:gravity="center"
+            android:layout_marginBottom="4dp" />
+
+        <TextView
+            android:id="@+id/tvScores"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Igrač 1: 10  |  Igrač 2: 5"
+            android:textSize="14sp"
+            android:gravity="center"
+            android:layout_marginBottom="12dp" />
+
+        <com.google.android.material.card.MaterialCardView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="16dp"
+            app:cardBackgroundColor="@color/white"
+            app:cardCornerRadius="20dp"
+            app:cardElevation="4dp">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="16dp">
+
+                <TextView
+                    android:id="@+id/tvQuestionCounter"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Pitanje 1/5"
+                    android:textColor="@color/slagalica_color"
+                    android:textStyle="bold"
+                    android:textSize="14sp"
+                    android:layout_marginBottom="8dp" />
+
+                <TextView
+                    android:id="@+id/tvQuestion"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Koji je glavni grad Srbije?"
+                    android:textSize="22sp"
+                    android:textStyle="bold"
+                    android:textColor="@color/black" />
+
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
+
+        <TextView
+            android:id="@+id/tvSelectedAnswer"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Odabran odgovor: nijedan"
+            android:textStyle="bold"
+            android:textColor="@color/black"
+            android:layout_marginBottom="12dp" />
+
+        <Button
+            android:id="@+id/btnAnswer1"
+            android:layout_width="match_parent"
+            android:layout_height="56dp"
+            android:text="Novi Sad"
+            android:textColor="@color/white"
+            android:backgroundTint="@color/slagalica_color"
+            android:layout_marginBottom="10dp" />
+
+        <Button
+            android:id="@+id/btnAnswer2"
+            android:layout_width="match_parent"
+            android:layout_height="56dp"
+            android:text="Niš"
+            android:textColor="@color/white"
+            android:backgroundTint="@color/slagalica_color"
+            android:layout_marginBottom="10dp" />
+
+        <Button
+            android:id="@+id/btnAnswer3"
+            android:layout_width="match_parent"
+            android:layout_height="56dp"
+            android:text="Beograd"
+            android:textColor="@color/white"
+            android:backgroundTint="@color/slagalica_color"
+            android:layout_marginBottom="10dp" />
+
+        <Button
+            android:id="@+id/btnAnswer4"
+            android:layout_width="match_parent"
+            android:layout_height="56dp"
+            android:text="Kragujevac"
+            android:textColor="@color/white"
+            android:backgroundTint="@color/slagalica_color"
+            android:layout_marginBottom="16dp" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="+10 za tačan odgovor, -5 za netačan odgovor"
+            android:textSize="13sp"
+            android:gravity="center"
+            android:layout_marginBottom="12dp" />
+
+        <Button
+            android:id="@+id/btnSubmitKoZnaZna"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Potvrdi odgovor i završi"
+            android:textColor="@color/white"
+            android:backgroundTint="@color/slagalica_color" />
+
+    </LinearLayout>
+</ScrollView>
