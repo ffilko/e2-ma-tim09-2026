@@ -22,6 +22,11 @@ import java.util.ArrayList;
 import java.util.List;
 
 import com.example.slagalica.R;
+import com.google.firebase.database.DataSnapshot;
+import com.google.firebase.database.DatabaseError;
+import com.google.firebase.database.DatabaseReference;
+import com.google.firebase.database.FirebaseDatabase;
+import com.google.firebase.database.ValueEventListener;
 
 import java.util.Random;
 
@@ -38,20 +43,20 @@ public class MojBrojFragment extends Fragment implements SensorEventListener {
     private Button btnStop, btnSubmit;
     private View mainRootView;
 
+    private boolean isMe1;
+    private DatabaseReference gameStateRef;
+    private ValueEventListener numbersListener;
+
     private int currentRound = 1;
-    private boolean isPlayer1Turn = true;
     private int player1Score = 0;
     private int player2Score = 0;
-    private int player1Result = Integer.MIN_VALUE; // čuvamo za poređenje
 
-    private enum Phase { WAITING_TARGET_STOP, WAITING_NUMBER_STOP, PLAYING }
+    private enum Phase { WAITING_TARGET_STOP, WAITING_NUMBER_STOP, PLAYING, WAITING_OPPONENT }
     private Phase phase = Phase.WAITING_TARGET_STOP;
 
     private int targetNumber = 0;
     private int[] availableNumbers = new int[6];
-    private Button[] numberButtons = new Button[6]; // referenca na svako dugme
-
-    // Lista tokena umesto stringa — svaki token je broj ili operator
+    private Button[] numberButtons = new Button[6];
     private List<String> tokens = new ArrayList<>();
 
     private CountDownTimer roundTimer;
@@ -60,11 +65,18 @@ public class MojBrojFragment extends Fragment implements SensorEventListener {
     private Sensor accelerometer;
     private long lastShakeTime = 0;
 
-    @Nullable
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater,
                              @Nullable ViewGroup container,
                              @Nullable Bundle savedInstanceState) {
+
+        String myRole = getArguments() != null ? getArguments().getString("myRole") : "player1";
+        String sessionId = getArguments() != null ? getArguments().getString("sessionId") : null;
+        isMe1 = "player1".equals(myRole);
+
+        gameStateRef = FirebaseDatabase.getInstance(
+                "https://slagalica-8871d-default-rtdb.europe-west1.firebasedatabase.app"
+        ).getReference("sessions").child(sessionId).child("gameState");
 
         mainRootView = inflater.inflate(R.layout.fragment_moj_broj, container, false);
 
@@ -87,8 +99,6 @@ public class MojBrojFragment extends Fragment implements SensorEventListener {
 
         return mainRootView;
     }
-
-    // ─── Sensor ─────────────────────────────────────────────────────────────
 
     private void setupSensor() {
         sensorManager = (SensorManager) requireContext()
@@ -133,60 +143,110 @@ public class MojBrojFragment extends Fragment implements SensorEventListener {
     @Override
     public void onAccuracyChanged(Sensor sensor, int accuracy) {}
 
-    // ─── Runda ──────────────────────────────────────────────────────────────
-
     private void startRound() {
         tokens.clear();
         tvExpression.setText("");
         tvTarget.setText("...");
         gridNumbers.removeAllViews();
-        phase = Phase.WAITING_TARGET_STOP;
 
         tvRound.setText("Runda " + currentRound + "/2");
-        tvPhase.setText((isPlayer1Turn ? "Igrač 1" : "Igrač 2") + " — Pritisni STOP za traženi broj");
         updateScores();
-        btnStop.setEnabled(true);
         btnSubmit.setEnabled(false);
 
-        stopTimer = new CountDownTimer(STOP_PHASE_DURATION_MS, 100) {
-            @Override public void onTick(long ms) { tvTimer.setText(String.format("%.1f", ms / 1000.0)); }
-            @Override public void onFinish() { handleStop(); }
-        }.start();
+        boolean iAmController = (currentRound == 1 && isMe1) || (currentRound == 2 && !isMe1);
+
+        if (iAmController) {
+            phase = Phase.WAITING_TARGET_STOP;
+            tvPhase.setText("Pritisni STOP za traženi broj");
+            btnStop.setEnabled(true);
+
+            stopTimer = new CountDownTimer(STOP_PHASE_DURATION_MS, 100) {
+                @Override public void onTick(long ms) {
+                    tvTimer.setText(String.format("%.1f", ms / 1000.0));
+                }
+                @Override public void onFinish() { handleStop(); }
+            }.start();
+        } else {
+            phase = Phase.WAITING_OPPONENT;
+            tvPhase.setText("Čekaj dok protivnik stopira brojeve...");
+            btnStop.setEnabled(false);
+            listenForNumbersFromFirebase();
+        }
     }
 
     private void handleStop() {
+        boolean iAmController = (currentRound == 1 && isMe1) || (currentRound == 2 && !isMe1);
+        if (!iAmController) return;
+
         if (phase == Phase.WAITING_TARGET_STOP) {
-            stopTimer.cancel();
+            if (stopTimer != null) stopTimer.cancel();
             targetNumber = new Random().nextInt(900) + 100;
             tvTarget.setText(String.valueOf(targetNumber));
+
+            gameStateRef.child("targetNumber").setValue(targetNumber);
+            gameStateRef.child("round").setValue(currentRound);
+            gameStateRef.child("numbersReady").setValue(false);
+
             phase = Phase.WAITING_NUMBER_STOP;
             tvPhase.setText("Pritisni STOP za brojeve");
 
             stopTimer = new CountDownTimer(STOP_PHASE_DURATION_MS, 100) {
-                @Override public void onTick(long ms) { tvTimer.setText(String.format("%.1f", ms / 1000.0)); }
+                @Override public void onTick(long ms) {
+                    tvTimer.setText(String.format("%.1f", ms / 1000.0));
+                }
                 @Override public void onFinish() { handleStop(); }
             }.start();
 
         } else if (phase == Phase.WAITING_NUMBER_STOP) {
-            stopTimer.cancel();
+            if (stopTimer != null) stopTimer.cancel();
             generateNumbers();
-            populateNumberButtons();
-            phase = Phase.PLAYING;
-            tvPhase.setText((isPlayer1Turn ? "Igrač 1" : "Igrač 2") + " — Kreiranje izraza");
-            btnStop.setEnabled(false);
-            btnSubmit.setEnabled(true);
 
-            roundTimer = new CountDownTimer(ROUND_DURATION_MS, 100) {
-                @Override public void onTick(long ms) { tvTimer.setText(String.format("%.1f", ms / 1000.0)); }
-                @Override public void onFinish() {
-                    tvTimer.setText("0.0");
-                    handleSubmit();
-                }
-            }.start();
+            List<Integer> numList = new ArrayList<>();
+            for (int n : availableNumbers) numList.add(n);
+
+            gameStateRef.child("availableNumbers").setValue(numList);
+            gameStateRef.child("numbersReady").setValue(true);
+            gameStateRef.child("result_player1").setValue(null);
+            gameStateRef.child("result_player2").setValue(null);
+
+            populateNumberButtons();
+            startPlayPhase();
         }
     }
 
-    // ─── Generisanje brojeva ─────────────────────────────────────────────────
+    private void listenForNumbersFromFirebase() {
+        numbersListener = new ValueEventListener() {
+            @Override
+            public void onDataChange(DataSnapshot snapshot) {
+                Boolean ready = snapshot.child("numbersReady").getValue(Boolean.class);
+                Integer round = snapshot.child("round").getValue(Integer.class);
+
+                if (Boolean.TRUE.equals(ready) && round != null && round == currentRound) {
+                    gameStateRef.removeEventListener(this);
+
+                    Integer target = snapshot.child("targetNumber").getValue(Integer.class);
+                    if (target != null) {
+                        targetNumber = target;
+                        tvTarget.setText(String.valueOf(targetNumber));
+                    }
+
+                    List<Integer> nums = new ArrayList<>();
+                    for (DataSnapshot n : snapshot.child("availableNumbers").getChildren()) {
+                        Integer val = n.getValue(Integer.class);
+                        if (val != null) nums.add(val);
+                    }
+                    for (int i = 0; i < Math.min(nums.size(), 6); i++) {
+                        availableNumbers[i] = nums.get(i);
+                    }
+
+                    populateNumberButtons();
+                    startPlayPhase();
+                }
+            }
+            @Override public void onCancelled(DatabaseError e) {}
+        };
+        gameStateRef.addValueEventListener(numbersListener);
+    }
 
     private void generateNumbers() {
         Random rnd = new Random();
@@ -213,7 +273,6 @@ public class MojBrojFragment extends Fragment implements SensorEventListener {
 
         for (int i = 0; i < availableNumbers.length; i++) {
             final int num = availableNumbers[i];
-            final int index = i;
 
             Button btn = new Button(requireContext());
             btn.setText(String.valueOf(num));
@@ -240,8 +299,6 @@ public class MojBrojFragment extends Fragment implements SensorEventListener {
         }
     }
 
-    // ─── Operatori ───────────────────────────────────────────────────────────
-
     private void setupOperatorButtons() {
         mainRootView.findViewById(R.id.btnPlus).setOnClickListener(v    -> addOperator("+"));
         mainRootView.findViewById(R.id.btnMinus).setOnClickListener(v   -> addOperator("-"));
@@ -253,14 +310,14 @@ public class MojBrojFragment extends Fragment implements SensorEventListener {
         mainRootView.findViewById(R.id.btnBackspace).setOnClickListener(v -> {
             if (!tokens.isEmpty()) {
                 String removed = tokens.remove(tokens.size() - 1);
-                // Ako je bio broj, vrati dugme
+
                 for (int i = 0; i < availableNumbers.length; i++) {
                     if (String.valueOf(availableNumbers[i]).equals(removed)
                             && numberButtons[i] != null
                             && !numberButtons[i].isEnabled()) {
                         numberButtons[i].setEnabled(true);
                         numberButtons[i].setAlpha(1f);
-                        break; // Vrati samo jedno dugme
+                        break;
                     }
                 }
                 updateExpression();
@@ -269,7 +326,6 @@ public class MojBrojFragment extends Fragment implements SensorEventListener {
 
         mainRootView.findViewById(R.id.btnClear).setOnClickListener(v -> {
             tokens.clear();
-            // Vrati sva dugmad
             for (Button btn : numberButtons) {
                 if (btn != null) {
                     btn.setEnabled(true);
@@ -296,15 +352,12 @@ public class MojBrojFragment extends Fragment implements SensorEventListener {
     }
 
     private void updateExpression() {
-        // Spoji tokene sa razmakom radi čitljivosti
         StringBuilder sb = new StringBuilder();
         for (String t : tokens) {
             sb.append(t);
         }
         tvExpression.setText(sb.toString());
     }
-
-    // ─── Evaluacija ──────────────────────────────────────────────────────────
 
     private double evaluate(String expr) {
         try {
@@ -370,66 +423,143 @@ public class MojBrojFragment extends Fragment implements SensorEventListener {
         }
     }
 
-    // ─── Predaja ─────────────────────────────────────────────────────────────
+    private void listenForNumbers() {
+        if (gameStateRef == null) return;
+
+        gameStateRef.addValueEventListener(new ValueEventListener() {
+            @Override
+            public void onDataChange(DataSnapshot snapshot) {
+                Boolean ready = snapshot.child("numbersReady").getValue(Boolean.class);
+                Integer round = snapshot.child("round").getValue(Integer.class);
+
+                if (Boolean.TRUE.equals(ready) && round != null && round == currentRound) {
+                    Integer target = snapshot.child("targetNumber").getValue(Integer.class);
+                    if (target != null) targetNumber = target;
+                    tvTarget.setText(String.valueOf(targetNumber));
+
+                    List<Integer> nums = new ArrayList<>();
+                    for (DataSnapshot n : snapshot.child("availableNumbers").getChildren()) {
+                        nums.add(n.getValue(Integer.class));
+                    }
+                    for (int i = 0; i < Math.min(nums.size(), availableNumbers.length); i++) {
+                        availableNumbers[i] = nums.get(i);
+                    }
+
+                    gameStateRef.removeEventListener(this);
+                    populateNumberButtons();
+                    startPlayPhase();
+                }
+            }
+            @Override public void onCancelled(DatabaseError e) {}
+        });
+    }
+
+    private void startPlayPhase() {
+        phase = Phase.PLAYING;
+        btnStop.setEnabled(false);
+        btnSubmit.setEnabled(true);
+        tvPhase.setText("Nađi broj: " + targetNumber);
+
+        roundTimer = new CountDownTimer(ROUND_DURATION_MS, 100) {
+            @Override public void onTick(long ms) {
+                tvTimer.setText(String.format("%.1f", ms / 1000.0));
+            }
+            @Override public void onFinish() {
+                tvTimer.setText("0.0");
+                handleSubmit();
+            }
+        }.start();
+    }
 
     private void handleSubmit() {
         if (phase != Phase.PLAYING) return;
         cancelTimers();
-        phase = Phase.WAITING_TARGET_STOP;
+        phase = Phase.WAITING_OPPONENT;
+        btnSubmit.setEnabled(false);
+        tvPhase.setText("Čekaj protivnika...");
 
         String expr = tvExpression.getText().toString();
         double result = evaluate(expr);
-        int playerResult = Double.isNaN(result) ? -1 : (int) result;
+        int myResult = Double.isNaN(result) ? -1 : (int) result;
 
-        if (currentRound == 1) {
-            player1Result = playerResult;
-            awardPoints(true, playerResult, Integer.MIN_VALUE);
-            isPlayer1Turn = !isPlayer1Turn;
-            currentRound = 2;
-            mainRootView.postDelayed(this::startRound, 1500);
-        } else {
-            int p2Result = playerResult;
-            // Poređenje oba rezultata za "bliže" pravilo
-            awardPoints(false, player1Result, p2Result);
-            mainRootView.postDelayed(this::endGame, 1500);
-        }
+        String myKey = isMe1 ? "result_player1" : "result_player2";
+        gameStateRef.child(myKey).setValue(myResult);
+
+        waitForBothResults();
     }
 
-    private void awardPoints(boolean isRound1, int p1Result, int p2Result) {
-        if (isRound1) {
-            // Samo runda 1 — igrač 1 igra
-            if (p1Result == targetNumber) {
-                player1Score += EXACT_POINTS;
+
+    private void waitForBothResults() {
+        gameStateRef.addValueEventListener(new ValueEventListener() {
+            @Override
+            public void onDataChange(DataSnapshot snapshot) {
+                boolean r1exists = snapshot.hasChild("result_player1")
+                        && snapshot.child("result_player1").getValue() != null;
+                boolean r2exists = snapshot.hasChild("result_player2")
+                        && snapshot.child("result_player2").getValue() != null;
+
+                if (r1exists && r2exists) {
+                    gameStateRef.removeEventListener(this);
+
+                    int r1 = snapshot.child("result_player1").getValue(Integer.class);
+                    int r2 = snapshot.child("result_player2").getValue(Integer.class);
+
+                    awardPoints(r1, r2);
+
+                    if (currentRound == 1) {
+                        currentRound = 2;
+                        gameStateRef.child("numbersReady").setValue(false);
+                        mainRootView.postDelayed(() -> startRound(), 1500);
+                    } else {
+                        mainRootView.postDelayed(() -> endGame(), 1500);
+                    }
+                }
             }
+            @Override public void onCancelled(DatabaseError e) {}
+        });
+    }
+
+    private void awardPoints(int r1, int r2) {
+        if (r1 == targetNumber && r2 != targetNumber) {
+            player1Score += EXACT_POINTS;
+        } else if (r2 == targetNumber && r1 != targetNumber) {
+            player2Score += EXACT_POINTS;
+        } else if (r1 == targetNumber && r2 == targetNumber) {
+            player1Score += EXACT_POINTS;
+            player2Score += EXACT_POINTS;
         } else {
-            // Runda 2 završena — proceni oba
-            if (p1Result == targetNumber && p2Result != targetNumber) {
-                player1Score += EXACT_POINTS;
-            } else if (p2Result == targetNumber && p1Result != targetNumber) {
-                player2Score += EXACT_POINTS;
-            } else if (p1Result == targetNumber && p2Result == targetNumber) {
-                // Oba tačna — oba dobijaju
-                player1Score += EXACT_POINTS;
-                player2Score += EXACT_POINTS;
-            } else if (p1Result != -1 || p2Result != -1) {
-                // Niko nije tačan — bliži dobija 5
-                int d1 = p1Result == -1 ? Integer.MAX_VALUE : Math.abs(p1Result - targetNumber);
-                int d2 = p2Result == -1 ? Integer.MAX_VALUE : Math.abs(p2Result - targetNumber);
-                if (d1 < d2) player1Score += CLOSEST_POINTS;
-                else if (d2 < d1) player2Score += CLOSEST_POINTS;
-                // Ako jednako — niko ne dobija (ili možeš dodati logiku po spec)
-            }
+            int d1 = r1 == -1 ? Integer.MAX_VALUE : Math.abs(r1 - targetNumber);
+            int d2 = r2 == -1 ? Integer.MAX_VALUE : Math.abs(r2 - targetNumber);
+            if (d1 < d2 && r1 != -1) player1Score += CLOSEST_POINTS;
+            else if (d2 < d1 && r2 != -1) player2Score += CLOSEST_POINTS;
         }
         updateScores();
     }
 
     private void endGame() {
         cancelTimers();
-        Bundle bundle = new Bundle();
-        bundle.putBoolean("finished", true);
-        bundle.putInt("player1Score", player1Score);
-        bundle.putInt("player2Score", player2Score);
-        getParentFragmentManager().setFragmentResult("game_finished", bundle);
+        int myFinalScore = isMe1 ? player1Score : player2Score;
+        Bundle result = new Bundle();
+        result.putBoolean("finished", true);
+        result.putInt("myScore", myFinalScore);
+        getParentFragmentManager().setFragmentResult("game_finished", result);
+    }
+
+    private void awardPointsRound2(int r1, int r2) {
+        if (r1 == targetNumber && r2 != targetNumber) {
+            player1Score += EXACT_POINTS;
+        } else if (r2 == targetNumber && r1 != targetNumber) {
+            player2Score += EXACT_POINTS;
+        } else if (r1 == targetNumber && r2 == targetNumber) {
+            player1Score += EXACT_POINTS;
+            player2Score += EXACT_POINTS;
+        } else if (r1 != -1 || r2 != -1) {
+            int d1 = r1 == -1 ? Integer.MAX_VALUE : Math.abs(r1 - targetNumber);
+            int d2 = r2 == -1 ? Integer.MAX_VALUE : Math.abs(r2 - targetNumber);
+            if (d1 < d2) player1Score += CLOSEST_POINTS;
+            else if (d2 < d1) player2Score += CLOSEST_POINTS;
+        }
+        updateScores();
     }
 
     private void updateScores() {
@@ -441,7 +571,6 @@ public class MojBrojFragment extends Fragment implements SensorEventListener {
         if (stopTimer != null)  { stopTimer.cancel();  stopTimer = null; }
     }
 
-    // Pomoćna metoda — šta je poslednji token
     private boolean lastTokenIsNumber() {
         if (tokens.isEmpty()) return false;
         String last = tokens.get(tokens.size() - 1);
@@ -454,7 +583,7 @@ public class MojBrojFragment extends Fragment implements SensorEventListener {
     }
 
     private boolean lastTokenIsOperator() {
-        if (tokens.isEmpty()) return true; // početak = može ići broj
+        if (tokens.isEmpty()) return true;
         String last = tokens.get(tokens.size() - 1);
         return last.equals("+") || last.equals("-") || last.equals("*")
                 || last.equals("/") || last.equals("(");
