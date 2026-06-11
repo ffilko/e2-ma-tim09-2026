@@ -15,6 +15,8 @@ import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
 
 import com.example.slagalica.R;
+import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.database.DataSnapshot;
 import com.google.firebase.database.DatabaseError;
 import com.google.firebase.database.DatabaseReference;
@@ -36,7 +38,9 @@ public class KorakPoKorakFragment extends Fragment {
     private static final int OPPONENT_BONUS = 5;
     private static final int STEP_DURATION_MS = 10_000;
 
-    private TextView tvRound, tvTimer, tvPhase, tvScores;
+    private TextView tvRound, tvTimer, tvPhase;
+    private TextView tvScore1, tvScore2;
+    private TextView tvPlayer1Name, tvPlayer2Name;
     private LinearLayout llClues;
     private EditText etGuess;
     private Button btnGuess;
@@ -76,10 +80,21 @@ public class KorakPoKorakFragment extends Fragment {
         tvRound  = view.findViewById(R.id.tvRound);
         tvTimer  = view.findViewById(R.id.tvTimer);
         tvPhase  = view.findViewById(R.id.tvPhase);
-        tvScores = view.findViewById(R.id.tvScores);
+        tvScore1 = view.findViewById(R.id.tvScore1);
+        tvScore2 = view.findViewById(R.id.tvScore2);
         llClues  = view.findViewById(R.id.llClues);
         etGuess  = view.findViewById(R.id.etGuess);
         btnGuess = view.findViewById(R.id.btnGuess);
+        tvPlayer1Name = view.findViewById(R.id.tvPlayer1Name);
+        tvPlayer2Name = view.findViewById(R.id.tvPlayer2Name);
+        if (isMe1) {
+            tvPlayer1Name.setText(getDisplayName());
+            tvPlayer2Name.setText("...");
+        } else {
+            tvPlayer1Name.setText("...");
+            tvPlayer2Name.setText(getDisplayName());
+        }
+        listenForPlayerNames(sessionId);
 
         etGuess.setEnabled(false);
         btnGuess.setEnabled(false);
@@ -511,7 +526,8 @@ public class KorakPoKorakFragment extends Fragment {
     }
 
     private void updateScores() {
-        tvScores.setText("Igrač 1: " + player1Score + "  |  Igrač 2: " + player2Score);
+        tvScore1.setText(String.valueOf(player1Score));
+        tvScore2.setText(String.valueOf(player2Score));
     }
 
     private void setFallbackData() {
@@ -546,5 +562,40 @@ public class KorakPoKorakFragment extends Fragment {
         params.setMargins(0, 0, 0, 16);
         tv.setLayoutParams(params);
         return tv;
+    }
+
+    private String getDisplayName() {
+        FirebaseUser user = FirebaseAuth.getInstance().getCurrentUser();
+
+        if (user == null) {
+            return "Anoniman";
+        }
+
+        if (user.getDisplayName() != null && !user.getDisplayName().isEmpty()) {
+            return user.getDisplayName();
+        }
+
+        return "Anoniman";
+    }
+
+    private void listenForPlayerNames(String sessionId) {
+        DatabaseReference sessionRef = FirebaseDatabase.getInstance(
+                "https://slagalica-8871d-default-rtdb.europe-west1.firebasedatabase.app"
+        ).getReference("sessions").child(sessionId);
+
+        sessionRef.addValueEventListener(new ValueEventListener() {
+            @Override
+            public void onDataChange(DataSnapshot snapshot) {
+                String p1Name = snapshot.child("player1Name").getValue(String.class);
+                String p2Name = snapshot.child("player2Name").getValue(String.class);
+                if (p1Name != null) tvPlayer1Name.setText(p1Name);
+                if (p2Name != null) tvPlayer2Name.setText(p2Name);
+
+                if (p1Name != null && p2Name != null) {
+                    sessionRef.removeEventListener(this);
+                }
+            }
+            @Override public void onCancelled(DatabaseError e) {}
+        });
     }
 }

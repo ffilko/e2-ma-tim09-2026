@@ -32,12 +32,26 @@ public class GameMenuFragment extends Fragment {
         View view = inflater.inflate(R.layout.fragment_game_menu, container, false);
 
         FirebaseUser user = FirebaseAuth.getInstance().getCurrentUser();
-        if(user != null) {
+
+        if (user != null) {
             myUid = user.getUid();
-            myName = user.getDisplayName() != null ? user.getDisplayName() : "Igrač";
+
+            String name = user.getDisplayName();
+
+            if (name != null && !name.trim().isEmpty()) {
+                myName = name;
+            } else {
+                myName = user.getEmail() != null ? user.getEmail().split("@")[0] : "Igrač";
+            }
+
         } else {
-            myUid = "anon_" + FirebaseDatabase.getInstance("https://slagalica-8871d-default-rtdb.europe-west1.firebasedatabase.app/").getReference().push().getKey();
-            myName = "Anonimus";
+            myUid = "anon_" + FirebaseDatabase
+                    .getInstance("https://slagalica-8871d-default-rtdb.europe-west1.firebasedatabase.app/")
+                    .getReference()
+                    .push()
+                    .getKey();
+
+            myName = "Anoniman";
         }
 
         queueRef = FirebaseDatabase.getInstance("https://slagalica-8871d-default-rtdb.europe-west1.firebasedatabase.app/").getReference("matchmaking_queue");
@@ -49,6 +63,10 @@ public class GameMenuFragment extends Fragment {
                 ((MainActivity) requireActivity()).navigate(new NotificationsFragment(), true));
         view.findViewById(R.id.btnProfileIcon).setOnClickListener(v ->
                 ((MainActivity) requireActivity()).navigate(new ProfileFragment(), true));
+        view.findViewById(R.id.btnLogout).setOnClickListener(v -> {
+            FirebaseAuth.getInstance().signOut();
+            ((MainActivity) requireActivity()).navigate(new HomeFragment(), false);
+        });
 
         return view;
     }

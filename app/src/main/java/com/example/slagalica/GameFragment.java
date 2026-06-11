@@ -30,8 +30,6 @@ public class GameFragment extends Fragment {
             KorakPoKorakFragment.class,
             MojBrojFragment.class
     };
-
-    private int currentGameIndex = 0;
     private SessionManager sessionManager;
     private ValueEventListener sessionListener;
     private ValueEventListener readyListener;
@@ -107,35 +105,6 @@ public class GameFragment extends Fragment {
         }
     }
 
-    private void waitForBothReady() {
-        readyListener = new ValueEventListener() {
-            @Override
-            public void onDataChange(DataSnapshot snapshot) {
-                Boolean p1 = snapshot.child("player1Ready").getValue(Boolean.class);
-                Boolean p2 = snapshot.child("player2Ready").getValue(Boolean.class);
-
-                if (Boolean.TRUE.equals(p1) && Boolean.TRUE.equals(p2)) {
-                    sessionManager.removeListener(readyListener);
-                    readyListener = null;
-
-                    if ("player1".equals(sessionManager.getMyPlayerId())) {
-                        int next = localGameIndex + 1;
-                        if (next < games.length) {
-                            sessionManager.advanceToNextGame(next);
-                        } else {
-                            sessionManager.getGameStateRef()
-                                    .getParent()
-                                    .child("phase")
-                                    .setValue("finished");
-                        }
-                    }
-                }
-            }
-            @Override public void onCancelled(DatabaseError e) {}
-        };
-        sessionManager.listenToSession(readyListener);
-    }
-
     private void showResults(DataSnapshot snapshot) {
         if (sessionListener != null) sessionManager.removeListener(sessionListener);
         if (readyListener   != null) sessionManager.removeListener(readyListener);
@@ -190,31 +159,6 @@ public class GameFragment extends Fragment {
             @Override
             public void onCancelled(DatabaseError e) {}
         });
-    }
-
-    private void startFirstGame() {
-        try {
-            Fragment firstGame = games[0].newInstance();
-            loadChildFragment(firstGame, false);
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-    }
-
-    private void loadNextGame() {
-        currentGameIndex++;
-        if (currentGameIndex < games.length) {
-            try {
-                Fragment nextGame = games[currentGameIndex].newInstance();
-                loadChildFragment(nextGame, true);
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
-        } else {
-            if (getActivity() instanceof MainActivity) {
-                ((MainActivity) getActivity()).navigate(new GameMenuFragment(), false);
-            }
-        }
     }
 
     private void loadChildFragment(Fragment fragment, boolean animate) {

@@ -22,6 +22,8 @@ import java.util.ArrayList;
 import java.util.List;
 
 import com.example.slagalica.R;
+import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.database.DataSnapshot;
 import com.google.firebase.database.DatabaseError;
 import com.google.firebase.database.DatabaseReference;
@@ -38,7 +40,9 @@ public class MojBrojFragment extends Fragment implements SensorEventListener {
     private static final int CLOSEST_POINTS = 5;
     private static final float SHAKE_THRESHOLD = 12f;
 
-    private TextView tvTarget, tvExpression, tvRound, tvTimer, tvPhase, tvScores;
+    private TextView tvTarget, tvExpression, tvRound, tvTimer, tvPhase;
+    private TextView tvScore1, tvScore2;
+    private TextView tvPlayer1Name, tvPlayer2Name;
     private GridLayout gridNumbers;
     private Button btnStop, btnSubmit;
     private View mainRootView;
@@ -85,10 +89,22 @@ public class MojBrojFragment extends Fragment implements SensorEventListener {
         tvRound      = mainRootView.findViewById(R.id.tvRound);
         tvTimer      = mainRootView.findViewById(R.id.tvTimer);
         tvPhase      = mainRootView.findViewById(R.id.tvPhase);
-        tvScores     = mainRootView.findViewById(R.id.tvScores);
+        tvScore1     = mainRootView.findViewById(R.id.tvScore1);
+        tvScore2     = mainRootView.findViewById(R.id.tvScore2);
         gridNumbers  = mainRootView.findViewById(R.id.gridNumbers);
         btnStop      = mainRootView.findViewById(R.id.btnStop);
         btnSubmit    = mainRootView.findViewById(R.id.btnSubmit);
+        tvPlayer1Name = mainRootView.findViewById(R.id.tvPlayer1Name);
+        tvPlayer2Name = mainRootView.findViewById(R.id.tvPlayer2Name);
+
+        if (isMe1) {
+            tvPlayer1Name.setText(getDisplayName());
+            tvPlayer2Name.setText("...");
+        } else {
+            tvPlayer1Name.setText("...");
+            tvPlayer2Name.setText(getDisplayName());
+        }
+        listenForPlayerNames(sessionId);
 
         setupSensor();
         setupOperatorButtons();
@@ -204,6 +220,8 @@ public class MojBrojFragment extends Fragment implements SensorEventListener {
             List<Integer> numList = new ArrayList<>();
             for (int n : availableNumbers) numList.add(n);
 
+            String numberStopper = isMe1 ? "player1" : "player2";
+            gameStateRef.child("numberStopper").setValue(numberStopper);
             gameStateRef.child("availableNumbers").setValue(numList);
             gameStateRef.child("numbersReady").setValue(true);
             gameStateRef.child("result_player1").setValue(null);
@@ -310,7 +328,6 @@ public class MojBrojFragment extends Fragment implements SensorEventListener {
         mainRootView.findViewById(R.id.btnBackspace).setOnClickListener(v -> {
             if (!tokens.isEmpty()) {
                 String removed = tokens.remove(tokens.size() - 1);
-
                 for (int i = 0; i < availableNumbers.length; i++) {
                     if (String.valueOf(availableNumbers[i]).equals(removed)
                             && numberButtons[i] != null
@@ -353,9 +370,7 @@ public class MojBrojFragment extends Fragment implements SensorEventListener {
 
     private void updateExpression() {
         StringBuilder sb = new StringBuilder();
-        for (String t : tokens) {
-            sb.append(t);
-        }
+        for (String t : tokens) sb.append(t);
         tvExpression.setText(sb.toString());
     }
 
@@ -423,37 +438,6 @@ public class MojBrojFragment extends Fragment implements SensorEventListener {
         }
     }
 
-    private void listenForNumbers() {
-        if (gameStateRef == null) return;
-
-        gameStateRef.addValueEventListener(new ValueEventListener() {
-            @Override
-            public void onDataChange(DataSnapshot snapshot) {
-                Boolean ready = snapshot.child("numbersReady").getValue(Boolean.class);
-                Integer round = snapshot.child("round").getValue(Integer.class);
-
-                if (Boolean.TRUE.equals(ready) && round != null && round == currentRound) {
-                    Integer target = snapshot.child("targetNumber").getValue(Integer.class);
-                    if (target != null) targetNumber = target;
-                    tvTarget.setText(String.valueOf(targetNumber));
-
-                    List<Integer> nums = new ArrayList<>();
-                    for (DataSnapshot n : snapshot.child("availableNumbers").getChildren()) {
-                        nums.add(n.getValue(Integer.class));
-                    }
-                    for (int i = 0; i < Math.min(nums.size(), availableNumbers.length); i++) {
-                        availableNumbers[i] = nums.get(i);
-                    }
-
-                    gameStateRef.removeEventListener(this);
-                    populateNumberButtons();
-                    startPlayPhase();
-                }
-            }
-            @Override public void onCancelled(DatabaseError e) {}
-        });
-    }
-
     private void startPlayPhase() {
         phase = Phase.PLAYING;
         btnStop.setEnabled(false);
@@ -488,7 +472,6 @@ public class MojBrojFragment extends Fragment implements SensorEventListener {
         waitForBothResults();
     }
 
-
     private void waitForBothResults() {
         gameStateRef.addValueEventListener(new ValueEventListener() {
             @Override
@@ -503,8 +486,9 @@ public class MojBrojFragment extends Fragment implements SensorEventListener {
 
                     int r1 = snapshot.child("result_player1").getValue(Integer.class);
                     int r2 = snapshot.child("result_player2").getValue(Integer.class);
+                    String stopper = snapshot.child("numberStopper").getValue(String.class);
 
-                    awardPoints(r1, r2);
+                    awardPoints(r1, r2, stopper);
 
                     if (currentRound == 1) {
                         currentRound = 2;
@@ -519,20 +503,47 @@ public class MojBrojFragment extends Fragment implements SensorEventListener {
         });
     }
 
-    private void awardPoints(int r1, int r2) {
-        if (r1 == targetNumber && r2 != targetNumber) {
-            player1Score += EXACT_POINTS;
-        } else if (r2 == targetNumber && r1 != targetNumber) {
-            player2Score += EXACT_POINTS;
-        } else if (r1 == targetNumber && r2 == targetNumber) {
-            player1Score += EXACT_POINTS;
-            player2Score += EXACT_POINTS;
-        } else {
-            int d1 = r1 == -1 ? Integer.MAX_VALUE : Math.abs(r1 - targetNumber);
-            int d2 = r2 == -1 ? Integer.MAX_VALUE : Math.abs(r2 - targetNumber);
-            if (d1 < d2 && r1 != -1) player1Score += CLOSEST_POINTS;
-            else if (d2 < d1 && r2 != -1) player2Score += CLOSEST_POINTS;
+    private void awardPoints(int r1, int r2, String numberStopper) {
+
+        boolean p1Exact = (r1 == targetNumber);
+        boolean p2Exact = (r2 == targetNumber);
+
+        if (p1Exact || p2Exact) {
+
+            if (p1Exact && p2Exact) {
+                if ("player1".equals(numberStopper)) {
+                    player1Score += EXACT_POINTS;
+                } else if ("player2".equals(numberStopper)) {
+                    player2Score += EXACT_POINTS;
+                }
+            } else if (p1Exact) {
+                player1Score += EXACT_POINTS;
+            } else {
+                player2Score += EXACT_POINTS;
+            }
+
+            updateScores();
+            return;
         }
+
+        boolean p1None = (r1 == -1);
+        boolean p2None = (r2 == -1);
+
+        int d1 = p1None ? Integer.MAX_VALUE : Math.abs(r1 - targetNumber);
+        int d2 = p2None ? Integer.MAX_VALUE : Math.abs(r2 - targetNumber);
+
+        if (d1 < d2) {
+            player1Score += CLOSEST_POINTS;
+        } else if (d2 < d1) {
+            player2Score += CLOSEST_POINTS;
+        } else {
+            if ("player1".equals(numberStopper)) {
+                player1Score += CLOSEST_POINTS;
+            } else {
+                player2Score += CLOSEST_POINTS;
+            }
+        }
+
         updateScores();
     }
 
@@ -545,25 +556,9 @@ public class MojBrojFragment extends Fragment implements SensorEventListener {
         getParentFragmentManager().setFragmentResult("game_finished", result);
     }
 
-    private void awardPointsRound2(int r1, int r2) {
-        if (r1 == targetNumber && r2 != targetNumber) {
-            player1Score += EXACT_POINTS;
-        } else if (r2 == targetNumber && r1 != targetNumber) {
-            player2Score += EXACT_POINTS;
-        } else if (r1 == targetNumber && r2 == targetNumber) {
-            player1Score += EXACT_POINTS;
-            player2Score += EXACT_POINTS;
-        } else if (r1 != -1 || r2 != -1) {
-            int d1 = r1 == -1 ? Integer.MAX_VALUE : Math.abs(r1 - targetNumber);
-            int d2 = r2 == -1 ? Integer.MAX_VALUE : Math.abs(r2 - targetNumber);
-            if (d1 < d2) player1Score += CLOSEST_POINTS;
-            else if (d2 < d1) player2Score += CLOSEST_POINTS;
-        }
-        updateScores();
-    }
-
     private void updateScores() {
-        tvScores.setText("Igrač 1: " + player1Score + "  |  Igrač 2: " + player2Score);
+        tvScore1.setText(String.valueOf(player1Score));
+        tvScore2.setText(String.valueOf(player2Score));
     }
 
     private void cancelTimers() {
@@ -587,5 +582,34 @@ public class MojBrojFragment extends Fragment implements SensorEventListener {
         String last = tokens.get(tokens.size() - 1);
         return last.equals("+") || last.equals("-") || last.equals("*")
                 || last.equals("/") || last.equals("(");
+    }
+
+    private String getDisplayName() {
+        FirebaseUser user = FirebaseAuth.getInstance().getCurrentUser();
+        if (user == null) return "Anoniman";
+        if (user.getDisplayName() != null && !user.getDisplayName().isEmpty()) {
+            return user.getDisplayName();
+        }
+        return "Anoniman";
+    }
+
+    private void listenForPlayerNames(String sessionId) {
+        DatabaseReference sessionRef = FirebaseDatabase.getInstance(
+                "https://slagalica-8871d-default-rtdb.europe-west1.firebasedatabase.app"
+        ).getReference("sessions").child(sessionId);
+
+        sessionRef.addValueEventListener(new ValueEventListener() {
+            @Override
+            public void onDataChange(DataSnapshot snapshot) {
+                String p1Name = snapshot.child("player1Name").getValue(String.class);
+                String p2Name = snapshot.child("player2Name").getValue(String.class);
+                if (p1Name != null) tvPlayer1Name.setText(p1Name);
+                if (p2Name != null) tvPlayer2Name.setText(p2Name);
+                if (p1Name != null && p2Name != null) {
+                    sessionRef.removeEventListener(this);
+                }
+            }
+            @Override public void onCancelled(DatabaseError e) {}
+        });
     }
 }
