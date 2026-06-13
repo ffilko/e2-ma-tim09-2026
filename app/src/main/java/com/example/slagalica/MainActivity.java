@@ -1,5 +1,8 @@
 package com.example.slagalica;
 
+import android.Manifest;
+import android.content.pm.PackageManager;
+import android.os.Build;
 import android.os.Bundle;
 
 import androidx.activity.EdgeToEdge;
@@ -12,6 +15,7 @@ import androidx.fragment.app.FragmentTransaction;
 import androidx.lifecycle.ProcessLifecycleOwner;
 
 import com.example.slagalica.data.AppLifecycleObserver;
+import com.example.slagalica.data.NotificationHelper;
 import com.google.firebase.database.FirebaseDatabase;
 
 public class MainActivity extends AppCompatActivity {
@@ -34,6 +38,12 @@ public class MainActivity extends AppCompatActivity {
         EdgeToEdge.enable(this);
         setContentView(R.layout.activity_main);
 
+        NotificationHelper.createChannels(this);
+        if (Build.VERSION.SDK_INT >= 33 && checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS)
+                != PackageManager.PERMISSION_GRANTED) {
+            requestPermissions(new String[]{Manifest.permission.POST_NOTIFICATIONS}, 100);
+        }
+
         ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main), (v, insets) -> {
             Insets systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
             v.setPadding(
@@ -46,7 +56,19 @@ public class MainActivity extends AppCompatActivity {
         });
 
         if (savedInstanceState == null) {
-            navigate(new HomeFragment(), false);
+            if (getIntent().getBooleanExtra("open_notifications", false)) {
+                navigate(new NotificationsFragment(), false);
+            } else {
+                navigate(new HomeFragment(), false);
+            }
+        }
+    }
+
+    @Override
+    protected void onNewIntent(android.content.Intent intent) {
+        super.onNewIntent(intent);
+        if (intent.getBooleanExtra("open_notifications", false)) {
+            navigate(new NotificationsFragment(), true);
         }
     }
 

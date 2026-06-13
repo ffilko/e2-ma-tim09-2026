@@ -134,8 +134,6 @@
             </LinearLayout>
 
         </com.google.android.material.card.MaterialCardView>
-
-        <!-- Gornji red: kolone A i B -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -150,17 +148,17 @@
                 android:orientation="vertical"
                 android:layout_marginEnd="4dp">
 
-                <Button android:id="@+id/btnA1" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="A1" android:backgroundTint="@color/slagalica_color" android:textSize="13sp" android:insetTop="0dp" android:insetBottom="0dp"/>
-                <Button android:id="@+id/btnA2" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="A2" android:backgroundTint="@color/slagalica_color" android:textSize="13sp" android:insetTop="0dp" android:insetBottom="0dp"/>
-                <Button android:id="@+id/btnA3" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="A3" android:backgroundTint="@color/slagalica_color" android:textSize="13sp" android:insetTop="0dp" android:insetBottom="0dp"/>
-                <Button android:id="@+id/btnA4" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="A4" android:backgroundTint="@color/slagalica_color" android:textSize="13sp" android:insetTop="0dp" android:insetBottom="0dp"/>
+                <Button android:id="@+id/btnA1" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginBottom="4dp" android:text="A1" android:backgroundTint="@color/slagalica_color" android:textSize="13sp" android:insetTop="0dp" android:insetBottom="0dp"/>
+                <Button android:id="@+id/btnA2" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginBottom="4dp" android:text="A2" android:backgroundTint="@color/slagalica_color" android:textSize="13sp" android:insetTop="0dp" android:insetBottom="0dp"/>
+                <Button android:id="@+id/btnA3" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginBottom="4dp" android:text="A3" android:backgroundTint="@color/slagalica_color" android:textSize="13sp" android:insetTop="0dp" android:insetBottom="0dp"/>
+                <Button android:id="@+id/btnA4" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginBottom="4dp" android:text="A4" android:backgroundTint="@color/slagalica_color" android:textSize="13sp" android:insetTop="0dp" android:insetBottom="0dp"/>
 
                 <EditText
                     android:id="@+id/etColA"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:hint="@string/column_a_hint"
-                    android:inputType="textCapCharacters"
+                    android:inputType="textCapCharacters" android:textColor="@color/black"
                     android:padding="8dp"
                     android:textAlignment="center"
                     android:textSize="13sp" />
@@ -173,24 +171,23 @@
                 android:orientation="vertical"
                 android:layout_marginStart="4dp">
 
-                <Button android:id="@+id/btnB1" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="B1" android:backgroundTint="@color/slagalica_color" android:textSize="13sp" android:insetTop="0dp" android:insetBottom="0dp"/>
-                <Button android:id="@+id/btnB2" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="B2" android:backgroundTint="@color/slagalica_color" android:textSize="13sp" android:insetTop="0dp" android:insetBottom="0dp"/>
-                <Button android:id="@+id/btnB3" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="B3" android:backgroundTint="@color/slagalica_color" android:textSize="13sp" android:insetTop="0dp" android:insetBottom="0dp"/>
-                <Button android:id="@+id/btnB4" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="B4" android:backgroundTint="@color/slagalica_color" android:textSize="13sp" android:insetTop="0dp" android:insetBottom="0dp"/>
+                <Button android:id="@+id/btnB1" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginBottom="4dp" android:text="B1" android:backgroundTint="@color/slagalica_color" android:textSize="13sp" android:insetTop="0dp" android:insetBottom="0dp"/>
+                <Button android:id="@+id/btnB2" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginBottom="4dp" android:text="B2" android:backgroundTint="@color/slagalica_color" android:textSize="13sp" android:insetTop="0dp" android:insetBottom="0dp"/>
+                <Button android:id="@+id/btnB3" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginBottom="4dp" android:text="B3" android:backgroundTint="@color/slagalica_color" android:textSize="13sp" android:insetTop="0dp" android:insetBottom="0dp"/>
+                <Button android:id="@+id/btnB4" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginBottom="4dp" android:text="B4" android:backgroundTint="@color/slagalica_color" android:textSize="13sp" android:insetTop="0dp" android:insetBottom="0dp"/>
 
                 <EditText
                     android:id="@+id/etColB"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:hint="@string/column_b_hint"
-                    android:inputType="textCapCharacters"
+                    android:inputType="textCapCharacters" android:textColor="@color/black"
                     android:padding="8dp"
                     android:textAlignment="center"
                     android:textSize="13sp" />
             </LinearLayout>
         </LinearLayout>
 
-        <!-- Konačno rešenje u sredini, kao u TV Slagalici -->
         <EditText
             android:id="@+id/etFinalSolution"
             android:layout_width="match_parent"
@@ -199,12 +196,11 @@
             android:hint="@string/final_answer_hint"
             android:textAlignment="center"
             android:textStyle="bold"
-            android:inputType="textCapCharacters"
+            android:inputType="textCapCharacters" android:textColor="@color/black"
             android:background="@android:drawable/edit_text"
             android:padding="12dp"
             android:textSize="16sp"/>
 
-        <!-- Donji red: kolone C i D -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -224,15 +220,15 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:hint="@string/column_c_hint"
-                    android:inputType="textCapCharacters"
+                    android:inputType="textCapCharacters" android:textColor="@color/black"
                     android:padding="8dp"
                     android:textAlignment="center"
                     android:textSize="13sp" />
 
-                <Button android:id="@+id/btnC1" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="C1" android:backgroundTint="@color/slagalica_color" android:textSize="13sp" android:insetTop="0dp" android:insetBottom="0dp"/>
-                <Button android:id="@+id/btnC2" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="C2" android:backgroundTint="@color/slagalica_color" android:textSize="13sp" android:insetTop="0dp" android:insetBottom="0dp"/>
-                <Button android:id="@+id/btnC3" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="C3" android:backgroundTint="@color/slagalica_color" android:textSize="13sp" android:insetTop="0dp" android:insetBottom="0dp"/>
-                <Button android:id="@+id/btnC4" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="C4" android:backgroundTint="@color/slagalica_color" android:textSize="13sp" android:insetTop="0dp" android:insetBottom="0dp"/>
+                <Button android:id="@+id/btnC1" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginBottom="4dp" android:text="C1" android:backgroundTint="@color/slagalica_color" android:textSize="13sp" android:insetTop="0dp" android:insetBottom="0dp"/>
+                <Button android:id="@+id/btnC2" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginBottom="4dp" android:text="C2" android:backgroundTint="@color/slagalica_color" android:textSize="13sp" android:insetTop="0dp" android:insetBottom="0dp"/>
+                <Button android:id="@+id/btnC3" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginBottom="4dp" android:text="C3" android:backgroundTint="@color/slagalica_color" android:textSize="13sp" android:insetTop="0dp" android:insetBottom="0dp"/>
+                <Button android:id="@+id/btnC4" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginBottom="4dp" android:text="C4" android:backgroundTint="@color/slagalica_color" android:textSize="13sp" android:insetTop="0dp" android:insetBottom="0dp"/>
             </LinearLayout>
 
             <LinearLayout
@@ -247,15 +243,15 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:hint="@string/column_d_hint"
-                    android:inputType="textCapCharacters"
+                    android:inputType="textCapCharacters" android:textColor="@color/black"
                     android:padding="8dp"
                     android:textAlignment="center"
                     android:textSize="13sp" />
 
-                <Button android:id="@+id/btnD1" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="D1" android:backgroundTint="@color/slagalica_color" android:textSize="13sp" android:insetTop="0dp" android:insetBottom="0dp"/>
-                <Button android:id="@+id/btnD2" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="D2" android:backgroundTint="@color/slagalica_color" android:textSize="13sp" android:insetTop="0dp" android:insetBottom="0dp"/>
-                <Button android:id="@+id/btnD3" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="D3" android:backgroundTint="@color/slagalica_color" android:textSize="13sp" android:insetTop="0dp" android:insetBottom="0dp"/>
-                <Button android:id="@+id/btnD4" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="D4" android:backgroundTint="@color/slagalica_color" android:textSize="13sp" android:insetTop="0dp" android:insetBottom="0dp"/>
+                <Button android:id="@+id/btnD1" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginBottom="4dp" android:text="D1" android:backgroundTint="@color/slagalica_color" android:textSize="13sp" android:insetTop="0dp" android:insetBottom="0dp"/>
+                <Button android:id="@+id/btnD2" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginBottom="4dp" android:text="D2" android:backgroundTint="@color/slagalica_color" android:textSize="13sp" android:insetTop="0dp" android:insetBottom="0dp"/>
+                <Button android:id="@+id/btnD3" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginBottom="4dp" android:text="D3" android:backgroundTint="@color/slagalica_color" android:textSize="13sp" android:insetTop="0dp" android:insetBottom="0dp"/>
+                <Button android:id="@+id/btnD4" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginBottom="4dp" android:text="D4" android:backgroundTint="@color/slagalica_color" android:textSize="13sp" android:insetTop="0dp" android:insetBottom="0dp"/>
             </LinearLayout>
         </LinearLayout>
 

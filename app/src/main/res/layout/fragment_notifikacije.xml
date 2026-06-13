@@ -72,67 +72,11 @@
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:fillViewport="true">
-
         <LinearLayout
+            android:id="@+id/llNotifications"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:orientation="vertical">
-
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:background="@color/white"
-                android:padding="12dp"
-                android:layout_marginBottom="8dp"
-                android:elevation="4dp">
-
-                <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal">
-                    <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="Notifikacija 1" android:textStyle="bold" android:textSize="16sp" android:textColor="@color/black"/>
-                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Pre 5 min" android:textSize="12sp"/>
-                </LinearLayout>
-
-                <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:text="Opis notifikacije 1" android:layout_marginTop="4dp" android:textColor="@color/black"/>
-
-                <Button android:layout_width="wrap_content" android:layout_height="36dp" android:text="@string/oznaci_procitano" android:textSize="10sp" android:layout_marginTop="8dp" android:backgroundTint="@color/slagalica_color"/>
-            </LinearLayout>
-
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:background="@color/white"
-                android:padding="12dp"
-                android:layout_marginBottom="8dp"
-                android:elevation="4dp">
-
-                <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal">
-                    <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="Notifikacija 2" android:textStyle="bold" android:textSize="16sp" android:textColor="@color/black"/>
-                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Pre 2 sata" android:textSize="12sp"/>
-                </LinearLayout>
-
-                <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:text="Opis notifikacije 2" android:layout_marginTop="4dp" android:textColor="@color/black"/>
-
-                <Button android:layout_width="wrap_content" android:layout_height="36dp" android:text="@string/oznaci_procitano" android:textSize="10sp" android:layout_marginTop="8dp" android:backgroundTint="@color/slagalica_color"/>
-            </LinearLayout>
-
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:background="#E0E0E0"
-                android:padding="12dp"
-                android:layout_marginBottom="8dp">
-
-                <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal">
-                    <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="Notifikacija 3" android:textSize="16sp"/>
-                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Juče" android:textSize="12sp"/>
-                </LinearLayout>
-
-                <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:text="Opis notifikacije 3" android:layout_marginTop="4dp"/>
-            </LinearLayout>
-
-        </LinearLayout>
+            android:orientation="vertical"/>
     </ScrollView>
 
 </LinearLayout>
