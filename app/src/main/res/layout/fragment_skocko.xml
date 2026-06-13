@@ -135,7 +135,6 @@
 
         </com.google.android.material.card.MaterialCardView>
 
-        <!-- Tabla sa pokusajima — redovi se dodaju programski -->
         <LinearLayout
             android:id="@+id/llBoard"
             android:layout_width="match_parent"

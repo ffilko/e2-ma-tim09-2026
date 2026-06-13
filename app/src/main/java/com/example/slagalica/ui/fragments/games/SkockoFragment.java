@@ -151,6 +151,7 @@ public class SkockoFragment extends Fragment {
             @Override
             public void onDataChange(@NonNull DataSnapshot snap) {
                 if (!snap.exists()) {
+                    if (resultSent) return;
                     if ("player1".equals(myRole)) initState();
                     return;
                 }
@@ -259,6 +260,7 @@ public class SkockoFragment extends Fragment {
     }
 
     private int pointsForAttempt(int attemptNumber) {
+        if (attemptNumber <= 2) return 20;
         if (attemptNumber <= 4) return 15;
         return 10;
     }
@@ -345,6 +347,10 @@ public class SkockoFragment extends Fragment {
         if (resultSent) return;
         resultSent = true;
         if (timer != null) timer.cancel();
+        if (stateListener != null) {
+            stateRef.removeEventListener(stateListener);
+            stateListener = null;
+        }
 
         Bundle result = new Bundle();
         result.putInt("myScore", myScore());

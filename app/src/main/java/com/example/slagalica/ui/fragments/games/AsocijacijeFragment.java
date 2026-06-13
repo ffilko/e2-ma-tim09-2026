@@ -16,6 +16,7 @@ import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.core.content.ContextCompat;
 import androidx.fragment.app.Fragment;
 
 import com.example.slagalica.R;
@@ -23,22 +24,22 @@ import com.example.slagalica.data.SessionManager;
 import com.google.firebase.database.DataSnapshot;
 import com.google.firebase.database.DatabaseError;
 import com.google.firebase.database.DatabaseReference;
-import com.google.firebase.database.FirebaseDatabase;
 import com.google.firebase.database.ValueEventListener;
+import com.google.firebase.firestore.FirebaseFirestore;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 
 public class AsocijacijeFragment extends Fragment {
 
-    private static final String DB_URL = "https://slagalica-8871d-default-rtdb.europe-west1.firebasedatabase.app/";
     private static final long ROUND_DURATION_MS = 2 * 60 * 1000;
     private static final String[] COLS = {"A", "B", "C", "D"};
 
-    private static final int COLOR_HIDDEN = Color.parseColor("#3F51B5");
     private static final int COLOR_OPENED = Color.parseColor("#607D8B");
     private static final int COLOR_SOLVED = Color.parseColor("#4CAF50");
+    private int colorHidden;
 
     private SessionManager sessionManager;
     private DatabaseReference stateRef;
@@ -84,6 +85,8 @@ public class AsocijacijeFragment extends Fragment {
         sessionManager.initSession(sessionId, myRole);
         stateRef = sessionManager.getGameStateRef();
 
+        colorHidden = ContextCompat.getColor(requireContext(), R.color.slagalica_color);
+
         bindViews(view);
         setupListeners();
         loadPlayerNames();
@@ -127,7 +130,9 @@ public class AsocijacijeFragment extends Fragment {
             }
             etCols[c].setImeOptions(EditorInfo.IME_ACTION_DONE);
             etCols[c].setOnEditorActionListener((v, actionId, event) -> {
-                if (actionId == EditorInfo.IME_ACTION_DONE || (event != null && event.getKeyCode() == KeyEvent.KEYCODE_ENTER && event.getAction() == KeyEvent.ACTION_DOWN)) {
+                if (actionId == EditorInfo.IME_ACTION_DONE
+                        || (event != null && event.getKeyCode() == KeyEvent.KEYCODE_ENTER
+                        && event.getAction() == KeyEvent.ACTION_DOWN)) {
                     guessColumn(col);
                     return true;
                 }
@@ -136,7 +141,7 @@ public class AsocijacijeFragment extends Fragment {
         }
         btnSubmitFinal.setOnClickListener(v -> guessFinal());
         btnPass.setOnClickListener(v -> {
-            if (isMyTurn() && canGuess && !finished) passTurn();
+            if (mayGuessNow()) passTurn();
         });
     }
 
@@ -153,22 +158,21 @@ public class AsocijacijeFragment extends Fragment {
             public void onCancelled(@NonNull DatabaseError error) {}
         });
     }
+
     private void listenToState() {
         stateListener = stateRef.addValueEventListener(new ValueEventListener() {
             @Override
             public void onDataChange(@NonNull DataSnapshot snap) {
                 if (!snap.exists()) {
+                    if (resultSent) return;
                     if ("player1".equals(myRole)) initState();
                     return;
                 }
                 readState(snap);
 
-                if (round != loadedRound) {
-                    loadRoundData(round);
-                }
-                if (roundStart != timerBase) {
-                    startLocalTimer();
-                }
+                if (round != loadedRound) loadRoundData(round);
+                if (roundStart != timerBase) startLocalTimer();
+
                 render();
 
                 if (finished) onGameFinished();
@@ -221,33 +225,60 @@ public class AsocijacijeFragment extends Fragment {
         }
     }
 
+    @SuppressWarnings("unchecked")
     private void loadRoundData(int r) {
         loadedRound = r;
-        FirebaseDatabase.getInstance(DB_URL)
-                .getReference("gameData/asocijacije")
-                .child(String.valueOf(r - 1))
-                .addListenerForSingleValueEvent(new ValueEventListener() {
-                    @Override
-                    public void onDataChange(@NonNull DataSnapshot snap) {
-                        for (int c = 0; c < 4; c++) {
-                            DataSnapshot col = snap.child("columns").child(COLS[c]);
-                            colSolutions[c] = col.child("solution").getValue(String.class);
-                            for (int i = 0; i < 4; i++) {
-                                fields[c][i] = col.child("fields").child(String.valueOf(i))
-                                        .getValue(String.class);
-                            }
-                        }
-                        String f = snap.child("final").getValue(String.class);
-                        finalSolution = f != null ? f : "";
-                        clearInputs();
-                        render();
+        FirebaseFirestore.getInstance()
+                .collection("games").document("asocijacije")
+                .collection("rounds").document("round_" + r)
+                .get()
+                .addOnSuccessListener(doc -> {
+                    if (!doc.exists()) {
+                        android.util.Log.e("ASOC", "Nema dokumenta round_" + r
+                                + " u games/asocijacije/rounds");
+                        return;
                     }
-                    @Override
-                    public void onCancelled(@NonNull DatabaseError error) {}
-                });
+                    String[] keys = {"a", "b", "c", "d"};
+                    for (int c = 0; c < 4; c++) {
+                        colSolutions[c] = doc.getString(keys[c] + "_solution");
+                        List<String> f = (List<String>) doc.get(keys[c] + "_fields");
+                        for (int i = 0; i < 4; i++) {
+                            fields[c][i] = (f != null && i < f.size()) ? f.get(i) : "?";
+                        }
+                    }
+                    String fin = doc.getString("final");
+                    finalSolution = fin != null ? fin : "";
+                    clearInputs();
+                    render();
+                })
+                .addOnFailureListener(e ->
+                        android.util.Log.e("ASOC", "Greska pri citanju asocijacije", e));
     }
     private boolean isMyTurn() {
         return myRole != null && myRole.equals(turn);
+    }
+    private boolean allFieldsOpened() {
+        for (int c = 0; c < 4; c++) {
+            if (solved[c]) continue;
+            for (int i = 0; i < 4; i++) {
+                if (!opened[c][i]) return false;
+            }
+        }
+        return true;
+    }
+
+    private boolean mayGuessNow() {
+        return isMyTurn() && !finished && (canGuess || allFieldsOpened());
+    }
+
+    private int unopenedCount(int c) {
+        int n = 0;
+        for (int i = 0; i < 4; i++) if (!opened[c][i]) n++;
+        return n;
+    }
+
+    private int myScore() {
+        return "player1".equals(myRole) ? scoreP1 : scoreP2;
     }
 
     private void openField(int c, int i) {
@@ -259,7 +290,7 @@ public class AsocijacijeFragment extends Fragment {
     }
 
     private void guessColumn(int c) {
-        if (finished || !isMyTurn() || !canGuess || solved[c]) return;
+        if (solved[c] || !mayGuessNow()) return;
         String guess = etCols[c].getText().toString().trim();
         if (guess.isEmpty()) return;
 
@@ -278,7 +309,7 @@ public class AsocijacijeFragment extends Fragment {
     }
 
     private void guessFinal() {
-        if (finished || !isMyTurn() || !canGuess) return;
+        if (!mayGuessNow()) return;
         String guess = etFinal.getText().toString().trim();
         if (guess.isEmpty()) return;
 
@@ -310,17 +341,8 @@ public class AsocijacijeFragment extends Fragment {
         stateRef.updateChildren(u);
     }
 
-    private int unopenedCount(int c) {
-        int n = 0;
-        for (int i = 0; i < 4; i++) if (!opened[c][i]) n++;
-        return n;
-    }
-
-    private int myScore() {
-        return "player1".equals(myRole) ? scoreP1 : scoreP2;
-    }
-
     private void endRound() {
+        if (finished) return;
         if (round == 1) {
             Map<String, Object> u = new HashMap<>();
             u.put("round", 2);
@@ -339,16 +361,22 @@ public class AsocijacijeFragment extends Fragment {
         if (resultSent) return;
         resultSent = true;
         if (timer != null) timer.cancel();
+        if (stateListener != null) {
+            stateRef.removeEventListener(stateListener);
+            stateListener = null;
+        }
 
         Bundle result = new Bundle();
         result.putInt("myScore", myScore());
         getParentFragmentManager().setFragmentResult("game_finished", result);
     }
+
     private void startLocalTimer() {
         timerBase = roundStart;
         if (timer != null) timer.cancel();
         if (roundStart == 0 || finished) return;
 
+        final int roundAtStart = round;
         long remaining = ROUND_DURATION_MS - (System.currentTimeMillis() - roundStart);
         if (remaining <= 0) {
             if ("player1".equals(myRole)) endRound();
@@ -363,7 +391,9 @@ public class AsocijacijeFragment extends Fragment {
             @Override
             public void onFinish() {
                 tvTimer.setText("0:00");
-                if ("player1".equals(myRole) && !finished) endRound();
+                if ("player1".equals(myRole) && !finished && round == roundAtStart) {
+                    endRound();
+                }
             }
         }.start();
     }
@@ -378,16 +408,16 @@ public class AsocijacijeFragment extends Fragment {
         tvScore1.setText(String.valueOf(scoreP1));
         tvScore2.setText(String.valueOf(scoreP2));
 
+        boolean mayGuess = mayGuessNow();
+        boolean mayOpen = isMyTurn() && !finished && !mayGuess;
+
         if (finished) {
             tvPhase.setText("Kraj igre");
         } else if (isMyTurn()) {
-            tvPhase.setText(canGuess ? "Ti pogađaš" : "Ti otvaraš polje");
+            tvPhase.setText(mayGuess ? "Ti pogađaš" : "Ti otvaraš polje");
         } else {
             tvPhase.setText("Protivnik igra");
         }
-
-        boolean mayOpen = isMyTurn() && !canGuess && !finished;
-        boolean mayGuess = isMyTurn() && canGuess && !finished;
 
         for (int c = 0; c < 4; c++) {
             for (int i = 0; i < 4; i++) {
@@ -399,7 +429,7 @@ public class AsocijacijeFragment extends Fragment {
                     b.setClickable(false);
                 } else {
                     b.setText(COLS[c] + (i + 1));
-                    b.setBackgroundTintList(ColorStateList.valueOf(COLOR_HIDDEN));
+                    b.setBackgroundTintList(ColorStateList.valueOf(colorHidden));
                     b.setClickable(mayOpen);
                 }
             }

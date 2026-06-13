@@ -6,6 +6,7 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 
+import com.example.slagalica.data.NotificationHelper;
 import com.example.slagalica.data.SessionManager;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
@@ -61,6 +62,17 @@ public class GameMenuFragment extends Fragment {
 
         view.findViewById(R.id.btnBellIcon).setOnClickListener(v ->
                 ((MainActivity) requireActivity()).navigate(new NotificationsFragment(), true));
+        view.findViewById(R.id.btnBellIcon).setOnLongClickListener(v -> {
+            NotificationHelper.send(requireContext(), NotificationHelper.CAT_CHAT,
+                    "Nova poruka", "Ana: Hoćemo partiju večeras?");
+            NotificationHelper.send(requireContext(), NotificationHelper.CAT_RANKING,
+                    "Rang lista", "Zauzeo/la si 3. mesto na nedeljnoj listi!");
+            NotificationHelper.send(requireContext(), NotificationHelper.CAT_REWARDS,
+                    "Nagrada", "Osvojio/la si 2 tokena za plasman!");
+            NotificationHelper.send(requireContext(), NotificationHelper.CAT_OTHER,
+                    "Liga", "Prešao/la si u Srebrnu ligu!");
+            return true;
+        });
         view.findViewById(R.id.btnProfileIcon).setOnClickListener(v ->
                 ((MainActivity) requireActivity()).navigate(new ProfileFragment(), true));
         view.findViewById(R.id.btnLogout).setOnClickListener(v -> {
