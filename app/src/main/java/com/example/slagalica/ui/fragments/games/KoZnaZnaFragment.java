@@ -354,10 +354,24 @@ public class KoZnaZnaFragment extends Fragment {
 
         int answer = selectedAnswer >= 0 ? selectedAnswer : -1;
 
-        Map<String, Object> update = new HashMap<>();
-        update.put(myAnswerKey, answer);
-        update.put(myTimeKey, System.currentTimeMillis());
-        gameStateRef.updateChildren(update);
+        // Get question start time and calculate relative response time
+        gameStateRef.child("questionStartTime").addListenerForSingleValueEvent(new ValueEventListener() {
+            @Override
+            public void onDataChange(@NonNull DataSnapshot snapshot) {
+                Long startTime = snapshot.getValue(Long.class);
+                long responseTime = startTime != null
+                        ? (System.currentTimeMillis() - startTime)
+                        : 0;
+
+                Map<String, Object> update = new HashMap<>();
+                update.put(myAnswerKey, answer);
+                update.put(myTimeKey, responseTime); // relativno vreme, ne apsolutno
+                gameStateRef.updateChildren(update);
+            }
+
+            @Override
+            public void onCancelled(@NonNull DatabaseError error) {}
+        });
 
         tvPhase.setText("Čekam protivnika...");
     }
@@ -385,21 +399,45 @@ public class KoZnaZnaFragment extends Fragment {
         boolean p1Wrong = p1a != -1 && p1a != correct;
         boolean p2Wrong = p2a != -1 && p2a != correct;
 
+        String resultMessage = "";
+
         if (p1Correct && p2Correct) {
+            // Oba tačno - brži dobija
             long t1 = p1Time != null ? p1Time : Long.MAX_VALUE;
             long t2 = p2Time != null ? p2Time : Long.MAX_VALUE;
             if (t1 <= t2) {
                 player1Score += CORRECT_POINTS;
+                resultMessage = "Oba tačno! Brži je Igrač 1 (+10)";
             } else {
                 player2Score += CORRECT_POINTS;
+                resultMessage = "Oba tačno! Brži je Igrač 2 (+10)";
             }
         } else {
-            if (p1Correct) player1Score += CORRECT_POINTS;
-            if (p2Correct) player2Score += CORRECT_POINTS;
+            if (p1Correct) {
+                player1Score += CORRECT_POINTS;
+                resultMessage = "Igrač 1 tačno (+10)";
+            }
+            if (p2Correct) {
+                player2Score += CORRECT_POINTS;
+                resultMessage += (resultMessage.isEmpty() ? "" : " | ") + "Igrač 2 tačno (+10)";
+            }
+            if (p1Wrong) {
+                player1Score += WRONG_POINTS;
+                resultMessage += (resultMessage.isEmpty() ? "" : " | ") + "Igrač 1 netačno (-5)";
+            }
+            if (p2Wrong) {
+                player2Score += WRONG_POINTS;
+                resultMessage += (resultMessage.isEmpty() ? "" : " | ") + "Igrač 2 netačno (-5)";
+            }
+            if (resultMessage.isEmpty()) {
+                resultMessage = "Niko nije odgovorio - bodovi ostaju isti";
+            }
         }
 
-        if (p1Wrong) player1Score += WRONG_POINTS;
-        if (p2Wrong) player2Score += WRONG_POINTS;
+        // Pokaži kratko poruku o rezultatu
+        if (tvPhase != null) {
+            tvPhase.setText(resultMessage);
+        }
 
         int nextQ = currentQuestion + 1;
 
@@ -419,6 +457,7 @@ public class KoZnaZnaFragment extends Fragment {
             update.put("questionStartTime", System.currentTimeMillis());
         }
 
+        // Mala pauza pre sledećeg pitanja da igrač vidi poruku
         gameStateRef.updateChildren(update);
     }
 

@@ -65,14 +65,17 @@ public class SpojniceFragment extends Fragment {
     private int selectedRight = -1;
 
     private String activePlayer = "player1";
-    private String roundPhase = "main";
+    private String roundPhase = "main"; // main, opponent_chance
+    // paired[i] = true ako je levi pojam i uspešno spojen (od strane bilo kog igrača)
     private boolean[] paired = new boolean[5];
+    // attempted[i] = true ako je trenutni igrač već probao levi pojam i u main fazi
+    private boolean[] attemptedThisTurn = new boolean[5];
     private int loadedRound = -1;
+    private String lastTurnKey = "";
 
     @Nullable
     @Override
-    public View onCreateView(@NonNull LayoutInflater inflater,
-                             @Nullable ViewGroup container,
+    public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container,
                              @Nullable Bundle savedInstanceState) {
         View view = inflater.inflate(R.layout.fragment_spojnice, container, false);
 
@@ -178,6 +181,10 @@ public class SpojniceFragment extends Fragment {
                     for (int i = 0; i < 5; i++) pairedMap.put(String.valueOf(i), false);
                     state.put("paired", pairedMap);
 
+                    Map<String, Object> attemptedMap = new HashMap<>();
+                    for (int i = 0; i < 5; i++) attemptedMap.put(String.valueOf(i), false);
+                    state.put("attempted", attemptedMap);
+
                     gameStateRef.setValue(state).addOnSuccessListener(v -> listenToGameState());
                 })
                 .addOnFailureListener(e -> publishFallbackState());
@@ -200,6 +207,10 @@ public class SpojniceFragment extends Fragment {
         Map<String, Object> pairedMap = new HashMap<>();
         for (int i = 0; i < 5; i++) pairedMap.put(String.valueOf(i), false);
         state.put("paired", pairedMap);
+
+        Map<String, Object> attemptedMap = new HashMap<>();
+        for (int i = 0; i < 5; i++) attemptedMap.put(String.valueOf(i), false);
+        state.put("attempted", attemptedMap);
 
         gameStateRef.setValue(state).addOnSuccessListener(v -> listenToGameState());
     }
@@ -248,6 +259,8 @@ public class SpojniceFragment extends Fragment {
                 for (int i = 0; i < 5; i++) {
                     Boolean p = snapshot.child("paired").child(String.valueOf(i)).getValue(Boolean.class);
                     paired[i] = Boolean.TRUE.equals(p);
+                    Boolean a = snapshot.child("attempted").child(String.valueOf(i)).getValue(Boolean.class);
+                    attemptedThisTurn[i] = Boolean.TRUE.equals(a);
                 }
 
                 if ("finished".equals(phase) && !gameEnded) {
@@ -259,6 +272,14 @@ public class SpojniceFragment extends Fragment {
                 if (currentRound != loadedRound) {
                     loadedRound = currentRound;
                     loadRoundFromSnapshot(snapshot);
+                    selectedLeft = -1;
+                    selectedRight = -1;
+                }
+
+                // Reset selection ako se promenio aktivni igrač ili faza
+                String turnKey = currentRound + "_" + activePlayer + "_" + roundPhase;
+                if (!turnKey.equals(lastTurnKey)) {
+                    lastTurnKey = turnKey;
                     selectedLeft = -1;
                     selectedRight = -1;
                 }
@@ -329,6 +350,13 @@ public class SpojniceFragment extends Fragment {
         return myRole != null && myRole.equals(activePlayer);
     }
 
+    private boolean allAttempted() {
+        for (int i = 0; i < 5; i++) {
+            if (!paired[i] && !attemptedThisTurn[i]) return false;
+        }
+        return true;
+    }
+
     private void renderUI() {
         tvRound.setText("Runda " + currentRound + "/2");
         updateScores();
@@ -336,23 +364,33 @@ public class SpojniceFragment extends Fragment {
         if (gameEnded) {
             tvPhase.setText("Kraj igre!");
         } else if (isMyTurn()) {
-            tvPhase.setText("opponent_chance".equals(roundPhase)
-                    ? "Tvoja šansa za preostale!"
-                    : "Ti povezuješ pojmove");
+            if ("opponent_chance".equals(roundPhase)) {
+                tvPhase.setText("Tvoja šansa za preostale parove!");
+            } else {
+                tvPhase.setText("Tvoj red - poveži pojmove");
+            }
         } else {
-            tvPhase.setText("opponent_chance".equals(roundPhase)
-                    ? "Protivnik ima šansu..."
-                    : "Protivnik povezuje");
+            if ("opponent_chance".equals(roundPhase)) {
+                tvPhase.setText("Protivnik pokušava preostale...");
+            } else {
+                tvPhase.setText("Protivnik povezuje pojmove...");
+            }
         }
 
+        // Set button texts and states
         for (int i = 0; i < 5; i++) {
             if (i < leftItems.size()) leftButtons[i].setText(leftItems.get(i));
-            if (i < rightItems.size()) rightButtons[i].setText(rightItems.get(i));
 
             if (paired[i]) {
+                // Već uspešno spojen - zelen, disabled
+                leftButtons[i].setEnabled(false);
+                leftButtons[i].setAlpha(0.5f);
+                leftButtons[i].setBackgroundTintList(ColorStateList.valueOf(Color.parseColor("#4CAF50")));
+            } else if (attemptedThisTurn[i]) {
+                // Već probano u ovoj fazi - ne može opet
                 leftButtons[i].setEnabled(false);
                 leftButtons[i].setAlpha(0.4f);
-                leftButtons[i].setBackgroundTintList(ColorStateList.valueOf(Color.parseColor("#4CAF50")));
+                leftButtons[i].setBackgroundTintList(ColorStateList.valueOf(Color.parseColor("#9E9E9E")));
             } else {
                 leftButtons[i].setEnabled(isMyTurn() && !gameEnded);
                 leftButtons[i].setAlpha(1f);
@@ -366,7 +404,7 @@ public class SpojniceFragment extends Fragment {
             }
         }
 
-        // Figure out which right buttons are paired
+        // Right buttons - find which are paired
         boolean[] rightPaired = new boolean[5];
         for (int i = 0; i < 5; i++) {
             if (paired[i]) {
@@ -380,9 +418,11 @@ public class SpojniceFragment extends Fragment {
         }
 
         for (int i = 0; i < 5; i++) {
+            if (i < rightItems.size()) rightButtons[i].setText(rightItems.get(i));
+
             if (rightPaired[i]) {
                 rightButtons[i].setEnabled(false);
-                rightButtons[i].setAlpha(0.4f);
+                rightButtons[i].setAlpha(0.5f);
                 rightButtons[i].setBackgroundTintList(ColorStateList.valueOf(Color.parseColor("#4CAF50")));
             } else {
                 rightButtons[i].setEnabled(isMyTurn() && !gameEnded);
@@ -409,6 +449,7 @@ public class SpojniceFragment extends Fragment {
 
     private void selectLeft(int index) {
         if (!isMyTurn() || paired[index] || gameEnded) return;
+        if (attemptedThisTurn[index]) return; // ne može u obe faze
         selectedLeft = index;
         renderUI();
         updateSelectionText();
@@ -436,11 +477,14 @@ public class SpojniceFragment extends Fragment {
 
     private void connectPair() {
         if (selectedLeft < 0 || selectedRight < 0 || !isMyTurn()) {
-            Toast.makeText(getContext(), "Izaberi po jedan pojam iz obe kolone.", Toast.LENGTH_SHORT).show();
+            Toast.makeText(getContext(), "Izaberi pojam iz obe kolone.", Toast.LENGTH_SHORT).show();
             return;
         }
 
-        if (paired[selectedLeft]) return;
+        if (paired[selectedLeft]) {
+            Toast.makeText(getContext(), "Već povezano.", Toast.LENGTH_SHORT).show();
+            return;
+        }
 
         String selectedRightText = rightButtons[selectedRight].getText().toString();
         String correctRightText = originalRight.get(correctMapping[selectedLeft]);
@@ -448,31 +492,75 @@ public class SpojniceFragment extends Fragment {
         boolean isCorrect = selectedRightText.equals(correctRightText);
 
         Map<String, Object> update = new HashMap<>();
-        update.put("paired/" + selectedLeft, true);
+
+        // U OBE faze: probano = true (može jednom)
+        update.put("attempted/" + selectedLeft, true);
 
         if (isCorrect) {
+            update.put("paired/" + selectedLeft, true);
+
             String scorer = isMe1 ? "player1Score" : "player2Score";
             int currentScore = isMe1 ? player1Score : player2Score;
             update.put(scorer, currentScore + POINTS_PER_PAIR);
+
             Toast.makeText(getContext(), "Tačno! +2 boda", Toast.LENGTH_SHORT).show();
         } else {
-            Toast.makeText(getContext(), "Netačno!", Toast.LENGTH_SHORT).show();
+            if ("main".equals(roundPhase)) {
+                Toast.makeText(getContext(), "Netačno! Pojam ostaje za protivnika.", Toast.LENGTH_SHORT).show();
+            } else {
+                Toast.makeText(getContext(), "Netačno!", Toast.LENGTH_SHORT).show();
+            }
         }
-
-        gameStateRef.updateChildren(update);
 
         selectedLeft = -1;
         selectedRight = -1;
         tvSelectedPair.setText("Izabrano: -");
 
-        // Check if all paired
-        int pairedCount = 0;
-        for (boolean p : paired) if (p) pairedCount++;
-        // +1 because we just paired one but state hasn't updated yet
-        if (pairedCount + 1 >= 5) {
-            if (roundTimer != null) roundTimer.cancel();
-            advanceRound();
-        }
+        gameStateRef.updateChildren(update).addOnSuccessListener(v -> {
+            checkAllAttemptedAfterUpdate();
+        });
+    }
+
+    private void checkAllAttemptedAfterUpdate() {
+        gameStateRef.addListenerForSingleValueEvent(new ValueEventListener() {
+            @Override
+            public void onDataChange(@NonNull DataSnapshot snapshot) {
+                boolean allDone = true;
+                int pairedCnt = 0;
+                for (int i = 0; i < 5; i++) {
+                    Boolean p = snapshot.child("paired").child(String.valueOf(i)).getValue(Boolean.class);
+                    Boolean a = snapshot.child("attempted").child(String.valueOf(i)).getValue(Boolean.class);
+                    boolean isPaired = Boolean.TRUE.equals(p);
+                    boolean isAttempted = Boolean.TRUE.equals(a);
+                    if (isPaired) pairedCnt++;
+                    if (!isPaired && !isAttempted) allDone = false;
+                }
+
+                String phase = snapshot.child("roundPhase").getValue(String.class);
+
+                // Ako su svi parovi povezani - kraj runde
+                if (pairedCnt >= 5) {
+                    if (roundTimer != null) roundTimer.cancel();
+                    advanceRound();
+                    return;
+                }
+
+                // Ako su svi levi probani u main fazi - daj šansu protivniku
+                if ("main".equals(phase) && allDone) {
+                    if (roundTimer != null) roundTimer.cancel();
+                    startOpponentChance();
+                }
+                // Ako su svi probani u opponent_chance fazi - kraj runde
+                else if ("opponent_chance".equals(phase) && allDone) {
+                    if (roundTimer != null) roundTimer.cancel();
+                    advanceRound();
+                }
+            }
+
+            @Override
+            public void onCancelled(@NonNull DatabaseError error) {
+            }
+        });
     }
 
     private void finishMyTurn() {
@@ -480,6 +568,7 @@ public class SpojniceFragment extends Fragment {
         if (roundTimer != null) roundTimer.cancel();
 
         if ("main".equals(roundPhase)) {
+            // Proveri ima li nepovezanih
             int unpairedCount = 0;
             for (boolean p : paired) if (!p) unpairedCount++;
 
@@ -495,10 +584,17 @@ public class SpojniceFragment extends Fragment {
 
     private void startOpponentChance() {
         String opponent = isMe1 ? "player2" : "player1";
+
+        // Resetuj "attempted" za novu fazu
         Map<String, Object> u = new HashMap<>();
         u.put("activePlayer", opponent);
         u.put("roundPhase", "opponent_chance");
         u.put("roundStart", System.currentTimeMillis());
+
+        Map<String, Object> attemptedMap = new HashMap<>();
+        for (int i = 0; i < 5; i++) attemptedMap.put(String.valueOf(i), false);
+        u.put("attempted", attemptedMap);
+
         gameStateRef.updateChildren(u);
     }
 
@@ -513,6 +609,10 @@ public class SpojniceFragment extends Fragment {
             Map<String, Object> pairedMap = new HashMap<>();
             for (int i = 0; i < 5; i++) pairedMap.put(String.valueOf(i), false);
             u.put("paired", pairedMap);
+
+            Map<String, Object> attemptedMap = new HashMap<>();
+            for (int i = 0; i < 5; i++) attemptedMap.put(String.valueOf(i), false);
+            u.put("attempted", attemptedMap);
 
             gameStateRef.updateChildren(u);
         } else {
