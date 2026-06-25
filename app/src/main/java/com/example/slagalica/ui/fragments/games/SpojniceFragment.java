@@ -15,6 +15,11 @@ import androidx.core.content.ContextCompat;
 import androidx.fragment.app.Fragment;
 
 import com.example.slagalica.R;
+import com.google.firebase.database.DataSnapshot;
+import com.google.firebase.database.DatabaseError;
+import com.google.firebase.database.DatabaseReference;
+import com.google.firebase.database.FirebaseDatabase;
+import com.google.firebase.database.ValueEventListener;
 
 public class SpojniceFragment extends Fragment {
 
@@ -29,6 +34,10 @@ public class SpojniceFragment extends Fragment {
 
     private int connectedPairs = 0;
 
+    private TextView tvScores;
+    private DatabaseReference sessionScoresRef;
+    private ValueEventListener scoresListener;
+
     @Nullable
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater,
@@ -37,8 +46,11 @@ public class SpojniceFragment extends Fragment {
 
         View view = inflater.inflate(R.layout.fragment_spojnice, container, false);
 
+        String sessionId = getArguments() != null ? getArguments().getString("sessionId") : null;
+
         tvSelectedPair = view.findViewById(R.id.tvSelectedPair);
         tvConnectedPairs = view.findViewById(R.id.tvConnectedPairs);
+        tvScores = view.findViewById(R.id.tvScores);
 
         leftButtons = new Button[]{
                 view.findViewById(R.id.btnLeft1),
@@ -68,7 +80,28 @@ public class SpojniceFragment extends Fragment {
         view.findViewById(R.id.btnClearSelection).setOnClickListener(v -> clearCurrentSelection());
         view.findViewById(R.id.btnFinishSpojnice).setOnClickListener(v -> finishGame());
 
+        if (sessionId != null) listenToSessionScores(sessionId);
+
         return view;
+    }
+
+    private void listenToSessionScores(String sessionId) {
+        sessionScoresRef = FirebaseDatabase.getInstance(
+                "https://slagalica-8871d-default-rtdb.europe-west1.firebasedatabase.app"
+        ).getReference("sessions").child(sessionId).child("scores");
+
+        scoresListener = new ValueEventListener() {
+            @Override
+            public void onDataChange(@NonNull DataSnapshot snap) {
+                Integer s1 = snap.child("player1").getValue(Integer.class);
+                Integer s2 = snap.child("player2").getValue(Integer.class);
+                if (tvScores != null)
+                    tvScores.setText("Igrač 1: " + (s1 != null ? s1 : 0) + "  |  Igrač 2: " + (s2 != null ? s2 : 0));
+            }
+            @Override
+            public void onCancelled(@NonNull DatabaseError e) {}
+        };
+        sessionScoresRef.addValueEventListener(scoresListener);
     }
 
     private void selectLeftButton(Button button) {
@@ -154,5 +187,12 @@ public class SpojniceFragment extends Fragment {
         Bundle result = new Bundle();
         result.putBoolean("finished", true);
         getParentFragmentManager().setFragmentResult("game_finished", result);
+    }
+
+    @Override
+    public void onDestroyView() {
+        super.onDestroyView();
+        if (scoresListener != null && sessionScoresRef != null)
+            sessionScoresRef.removeEventListener(scoresListener);
     }
 }

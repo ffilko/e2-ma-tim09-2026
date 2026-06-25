@@ -68,6 +68,9 @@ public class MojBrojFragment extends Fragment implements SensorEventListener {
     private SensorManager sensorManager;
     private Sensor accelerometer;
     private long lastShakeTime = 0;
+    private DatabaseReference sessionScoresRef;
+    private ValueEventListener scoresListener;
+    private int cumulativeP1 = 0, cumulativeP2 = 0;
 
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater,
@@ -81,6 +84,8 @@ public class MojBrojFragment extends Fragment implements SensorEventListener {
         gameStateRef = FirebaseDatabase.getInstance(
                 "https://slagalica-8871d-default-rtdb.europe-west1.firebasedatabase.app"
         ).getReference("sessions").child(sessionId).child("gameState");
+
+        listenToSessionScores(sessionId);
 
         mainRootView = inflater.inflate(R.layout.fragment_moj_broj, container, false);
 
@@ -140,6 +145,8 @@ public class MojBrojFragment extends Fragment implements SensorEventListener {
         super.onDestroyView();
         cancelTimers();
         sensorManager.unregisterListener(this);
+        if (scoresListener != null && sessionScoresRef != null)
+            sessionScoresRef.removeEventListener(scoresListener);
     }
 
     @Override
@@ -166,7 +173,7 @@ public class MojBrojFragment extends Fragment implements SensorEventListener {
         gridNumbers.removeAllViews();
 
         tvRound.setText("Runda " + currentRound + "/2");
-        updateScores();
+        updateLocalScores();
         btnSubmit.setEnabled(false);
 
         boolean iAmController = (currentRound == 1 && isMe1) || (currentRound == 2 && !isMe1);
@@ -522,7 +529,7 @@ public class MojBrojFragment extends Fragment implements SensorEventListener {
                 player2Score += EXACT_POINTS;
             }
 
-            updateScores();
+            updateLocalScores();
             return;
         }
 
@@ -544,7 +551,7 @@ public class MojBrojFragment extends Fragment implements SensorEventListener {
             }
         }
 
-        updateScores();
+        updateLocalScores();
     }
 
     private void endGame() {
@@ -556,7 +563,7 @@ public class MojBrojFragment extends Fragment implements SensorEventListener {
         getParentFragmentManager().setFragmentResult("game_finished", result);
     }
 
-    private void updateScores() {
+    private void updateLocalScores() {
         tvScore1.setText(String.valueOf(player1Score));
         tvScore2.setText(String.valueOf(player2Score));
     }
@@ -611,5 +618,29 @@ public class MojBrojFragment extends Fragment implements SensorEventListener {
             }
             @Override public void onCancelled(DatabaseError e) {}
         });
+    }
+
+    private void listenToSessionScores(String sessionId) {
+        sessionScoresRef = FirebaseDatabase.getInstance(
+                "https://slagalica-8871d-default-rtdb.europe-west1.firebasedatabase.app"
+        ).getReference("sessions").child(sessionId).child("scores");
+
+        scoresListener = new ValueEventListener() {
+            @Override
+            public void onDataChange(@NonNull DataSnapshot snap) {
+                Integer s1 = snap.child("player1").getValue(Integer.class);
+                Integer s2 = snap.child("player2").getValue(Integer.class);
+                cumulativeP1 = s1 != null ? s1 : 0;
+                cumulativeP2 = s2 != null ? s2 : 0;
+                updateScoreDisplay();
+            }
+            @Override public void onCancelled(@NonNull DatabaseError e) {}
+        };
+        sessionScoresRef.addValueEventListener(scoresListener);
+    }
+
+    private void updateScoreDisplay() {
+        if (tvScore1 != null) tvScore1.setText(String.valueOf(cumulativeP1));
+        if (tvScore2 != null) tvScore2.setText(String.valueOf(cumulativeP2));
     }
 }

@@ -114,4 +114,13 @@ public class SessionManager {
         this.myPlayerId = myRole;
         this.sessionRef = db.child(SESSIONS_PATH).child(sessionId);
     }
+
+    public ValueEventListener listenToScores(ValueEventListener listener) {
+        sessionRef.child("scores").addValueEventListener(listener);
+        return listener;
+    }
+
+    public void removeScoresListener(ValueEventListener listener) {
+        sessionRef.child("scores").removeEventListener(listener);
+    }
 }

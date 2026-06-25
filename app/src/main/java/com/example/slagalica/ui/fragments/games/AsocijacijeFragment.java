@@ -24,6 +24,7 @@ import com.example.slagalica.data.SessionManager;
 import com.google.firebase.database.DataSnapshot;
 import com.google.firebase.database.DatabaseError;
 import com.google.firebase.database.DatabaseReference;
+import com.google.firebase.database.FirebaseDatabase;
 import com.google.firebase.database.ValueEventListener;
 import com.google.firebase.firestore.FirebaseFirestore;
 
@@ -67,6 +68,10 @@ public class AsocijacijeFragment extends Fragment {
     private long timerBase = -1;
     private boolean resultSent = false;
 
+    private DatabaseReference sessionScoresRef;
+    private ValueEventListener scoresListener;
+    private int cumulativeP1 = 0, cumulativeP2 = 0;
+
     @Nullable
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container,
@@ -84,6 +89,7 @@ public class AsocijacijeFragment extends Fragment {
         sessionManager = new SessionManager();
         sessionManager.initSession(sessionId, myRole);
         stateRef = sessionManager.getGameStateRef();
+        listenToSessionScores(sessionId);
 
         colorHidden = ContextCompat.getColor(requireContext(), R.color.slagalica_color);
 
@@ -405,8 +411,6 @@ public class AsocijacijeFragment extends Fragment {
 
     private void render() {
         tvRound.setText("Runda " + round + "/2");
-        tvScore1.setText(String.valueOf(scoreP1));
-        tvScore2.setText(String.valueOf(scoreP2));
 
         boolean mayGuess = mayGuessNow();
         boolean mayOpen = isMyTurn() && !finished && !mayGuess;
@@ -451,5 +455,33 @@ public class AsocijacijeFragment extends Fragment {
         super.onDestroyView();
         if (timer != null) timer.cancel();
         if (stateListener != null) stateRef.removeEventListener(stateListener);
+
+        if (scoresListener != null && sessionScoresRef != null)
+            sessionScoresRef.removeEventListener(scoresListener);
     }
+
+    private void listenToSessionScores(String sessionId) {
+        sessionScoresRef = FirebaseDatabase.getInstance(
+                "https://slagalica-8871d-default-rtdb.europe-west1.firebasedatabase.app"
+        ).getReference("sessions").child(sessionId).child("scores");
+
+        scoresListener = new ValueEventListener() {
+            @Override
+            public void onDataChange(@NonNull DataSnapshot snap) {
+                Integer s1 = snap.child("player1").getValue(Integer.class);
+                Integer s2 = snap.child("player2").getValue(Integer.class);
+                cumulativeP1 = s1 != null ? s1 : 0;
+                cumulativeP2 = s2 != null ? s2 : 0;
+                updateScoreDisplay();
+            }
+            @Override public void onCancelled(@NonNull DatabaseError e) {}
+        };
+        sessionScoresRef.addValueEventListener(scoresListener);
+    }
+
+    private void updateScoreDisplay() {
+        if (tvScore1 != null) tvScore1.setText(String.valueOf(cumulativeP1));
+        if (tvScore2 != null) tvScore2.setText(String.valueOf(cumulativeP2));
+    }
+
 }

@@ -62,7 +62,9 @@ public class KorakPoKorakFragment extends Fragment {
     private TextView[] stepViews;
     private boolean round2Prepared = false;
     private boolean gameEnded = false;
-
+    private DatabaseReference sessionScoresRef;
+    private ValueEventListener scoresListener;
+    private int cumulativeP1 = 0, cumulativeP2 = 0;
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater,
                              @Nullable ViewGroup container,
@@ -76,6 +78,8 @@ public class KorakPoKorakFragment extends Fragment {
         gameStateRef = FirebaseDatabase.getInstance(
                 "https://slagalica-8871d-default-rtdb.europe-west1.firebasedatabase.app"
         ).getReference("sessions").child(sessionId).child("gameState");
+
+        listenToSessionScores(sessionId);
 
         tvRound  = view.findViewById(R.id.tvRound);
         tvTimer  = view.findViewById(R.id.tvTimer);
@@ -221,7 +225,7 @@ public class KorakPoKorakFragment extends Fragment {
         if (round != null) currentRound = round;
 
         initClueViews();
-        updateScores();
+        updateLocalScores();
         tvRound.setText("Runda " + currentRound + "/2");
 
         isActivePlayer = (currentRound == 1 && isMe1) || (currentRound == 2 && !isMe1);
@@ -263,7 +267,7 @@ public class KorakPoKorakFragment extends Fragment {
 
                 if (p1s != null) player1Score = p1s;
                 if (p2s != null) player2Score = p2s;
-                updateScores();
+                updateLocalScores();
 
 
                 if (step != null && stepViews != null && steps != null) {
@@ -523,9 +527,11 @@ public class KorakPoKorakFragment extends Fragment {
         if (gameStateListener != null) {
             gameStateRef.removeEventListener(gameStateListener);
         }
+        if (scoresListener != null && sessionScoresRef != null)
+            sessionScoresRef.removeEventListener(scoresListener);
     }
 
-    private void updateScores() {
+    private void updateLocalScores() {
         tvScore1.setText(String.valueOf(player1Score));
         tvScore2.setText(String.valueOf(player2Score));
     }
@@ -597,5 +603,29 @@ public class KorakPoKorakFragment extends Fragment {
             }
             @Override public void onCancelled(DatabaseError e) {}
         });
+    }
+
+    private void listenToSessionScores(String sessionId) {
+        sessionScoresRef = FirebaseDatabase.getInstance(
+                "https://slagalica-8871d-default-rtdb.europe-west1.firebasedatabase.app"
+        ).getReference("sessions").child(sessionId).child("scores");
+
+        scoresListener = new ValueEventListener() {
+            @Override
+            public void onDataChange(@NonNull DataSnapshot snap) {
+                Integer s1 = snap.child("player1").getValue(Integer.class);
+                Integer s2 = snap.child("player2").getValue(Integer.class);
+                cumulativeP1 = s1 != null ? s1 : 0;
+                cumulativeP2 = s2 != null ? s2 : 0;
+                updateScoreDisplay();
+            }
+            @Override public void onCancelled(@NonNull DatabaseError e) {}
+        };
+        sessionScoresRef.addValueEventListener(scoresListener);
+    }
+
+    private void updateScoreDisplay() {
+        if (tvScore1 != null) tvScore1.setText(String.valueOf(cumulativeP1));
+        if (tvScore2 != null) tvScore2.setText(String.valueOf(cumulativeP2));
     }
 }
