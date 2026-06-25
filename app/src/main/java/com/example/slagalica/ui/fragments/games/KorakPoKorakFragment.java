@@ -225,7 +225,7 @@ public class KorakPoKorakFragment extends Fragment {
         if (round != null) currentRound = round;
 
         initClueViews();
-        updateLocalScores();
+        updateScoreDisplay();
         tvRound.setText("Runda " + currentRound + "/2");
 
         isActivePlayer = (currentRound == 1 && isMe1) || (currentRound == 2 && !isMe1);
@@ -267,7 +267,7 @@ public class KorakPoKorakFragment extends Fragment {
 
                 if (p1s != null) player1Score = p1s;
                 if (p2s != null) player2Score = p2s;
-                updateLocalScores();
+                updateScoreDisplay();
 
 
                 if (step != null && stepViews != null && steps != null) {
@@ -366,7 +366,7 @@ public class KorakPoKorakFragment extends Fragment {
             }
         }
 
-        gameStateRef.child("player1Score").setValue(player1Score);
+        gameStateRef.child("player1Score").setValue( player1Score);
         gameStateRef.child("player2Score").setValue(player2Score);
     }
 
@@ -531,11 +531,6 @@ public class KorakPoKorakFragment extends Fragment {
             sessionScoresRef.removeEventListener(scoresListener);
     }
 
-    private void updateLocalScores() {
-        tvScore1.setText(String.valueOf(player1Score));
-        tvScore2.setText(String.valueOf(player2Score));
-    }
-
     private void setFallbackData() {
         steps = new String[]{
                 "Korak 1 — Rođen je 1856. godine.",
@@ -625,7 +620,7 @@ public class KorakPoKorakFragment extends Fragment {
     }
 
     private void updateScoreDisplay() {
-        if (tvScore1 != null) tvScore1.setText(String.valueOf(cumulativeP1));
-        if (tvScore2 != null) tvScore2.setText(String.valueOf(cumulativeP2));
+        if (tvScore1 != null) tvScore1.setText(String.valueOf(cumulativeP1 + player1Score));
+        if (tvScore2 != null) tvScore2.setText(String.valueOf(cumulativeP2 + player2Score));
     }
 }

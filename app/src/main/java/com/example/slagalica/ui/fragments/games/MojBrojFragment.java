@@ -173,7 +173,7 @@ public class MojBrojFragment extends Fragment implements SensorEventListener {
         gridNumbers.removeAllViews();
 
         tvRound.setText("Runda " + currentRound + "/2");
-        updateLocalScores();
+        //updateScoreDisplay();
         btnSubmit.setEnabled(false);
 
         boolean iAmController = (currentRound == 1 && isMe1) || (currentRound == 2 && !isMe1);
@@ -529,7 +529,9 @@ public class MojBrojFragment extends Fragment implements SensorEventListener {
                 player2Score += EXACT_POINTS;
             }
 
-            updateLocalScores();
+            sessionScoresRef.child("player1").setValue(cumulativeP1 + player1Score);
+            sessionScoresRef.child("player2").setValue(cumulativeP2 + player2Score);
+            updateScoreDisplay();
             return;
         }
 
@@ -551,7 +553,10 @@ public class MojBrojFragment extends Fragment implements SensorEventListener {
             }
         }
 
-        updateLocalScores();
+        sessionScoresRef.child("player1").setValue(cumulativeP1);
+        sessionScoresRef.child("player2").setValue(cumulativeP2);
+
+        updateScoreDisplay();
     }
 
     private void endGame() {
@@ -561,11 +566,6 @@ public class MojBrojFragment extends Fragment implements SensorEventListener {
         result.putBoolean("finished", true);
         result.putInt("myScore", myFinalScore);
         getParentFragmentManager().setFragmentResult("game_finished", result);
-    }
-
-    private void updateLocalScores() {
-        tvScore1.setText(String.valueOf(player1Score));
-        tvScore2.setText(String.valueOf(player2Score));
     }
 
     private void cancelTimers() {
@@ -640,7 +640,7 @@ public class MojBrojFragment extends Fragment implements SensorEventListener {
     }
 
     private void updateScoreDisplay() {
-        if (tvScore1 != null) tvScore1.setText(String.valueOf(cumulativeP1));
-        if (tvScore2 != null) tvScore2.setText(String.valueOf(cumulativeP2));
+        if (tvScore1 != null) tvScore1.setText(String.valueOf(cumulativeP1 + player1Score));
+        if (tvScore2 != null) tvScore2.setText(String.valueOf(cumulativeP2 + player2Score));
     }
 }
