@@ -30,6 +30,15 @@ android {
     buildFeatures {
         viewBinding true
     }
+    packaging {
+        resources {
+            excludes += ['META-INF/DEPENDENCIES',
+                         'META-INF/LICENSE',
+                         'META-INF/LICENSE.txt',
+                         'META-INF/NOTICE',
+                         'META-INF/NOTICE.txt']
+        }
+    }
 }
 
 dependencies {
@@ -38,6 +47,7 @@ dependencies {
     implementation 'com.google.firebase:firebase-firestore'
     implementation 'com.google.firebase:firebase-messaging'
     implementation 'com.google.firebase:firebase-database'
+    implementation 'com.google.auth:google-auth-library-oauth2-http:1.19.0'
 
     // QR kod
     implementation 'com.google.zxing:core:3.5.2'

@@ -19,6 +19,11 @@ import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.firestore.FirebaseFirestore;
 
+import org.json.JSONObject;
+
+import java.io.OutputStream;
+import java.net.HttpURLConnection;
+import java.net.URL;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -32,6 +37,7 @@ public class NotificationHelper {
     public static final String CAT_RANKING = "ranking";
     public static final String CAT_REWARDS = "rewards";
     public static final String CAT_OTHER = "other";
+
 
     public static void createChannels(Context ctx) {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return;
@@ -114,4 +120,10 @@ public class NotificationHelper {
         NotificationManagerCompat.from(ctx)
                 .notify((int) (System.currentTimeMillis() % Integer.MAX_VALUE), b.build());
     }
+
+    public static void showPublicNotification(Context ctx, String category,
+                                              String title, String text) {
+        showSystemNotification(ctx, category, title, text);
+    }
+
 }

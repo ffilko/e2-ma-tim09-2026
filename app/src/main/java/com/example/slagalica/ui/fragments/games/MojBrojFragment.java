@@ -71,6 +71,8 @@ public class MojBrojFragment extends Fragment implements SensorEventListener {
     private DatabaseReference sessionScoresRef;
     private ValueEventListener scoresListener;
     private int cumulativeP1 = 0, cumulativeP2 = 0;
+    private boolean isChallengeMode = false;
+    private String roundSeed = null;
 
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater,
@@ -79,6 +81,9 @@ public class MojBrojFragment extends Fragment implements SensorEventListener {
 
         String myRole = getArguments() != null ? getArguments().getString("myRole") : "player1";
         String sessionId = getArguments() != null ? getArguments().getString("sessionId") : null;
+        isChallengeMode = getArguments() != null
+                && getArguments().getBoolean("isChallengeMode", false);
+        roundSeed = getArguments() != null ? getArguments().getString("roundSeed") : null;
         isMe1 = "player1".equals(myRole);
 
         gameStateRef = FirebaseDatabase.getInstance(
@@ -86,6 +91,32 @@ public class MojBrojFragment extends Fragment implements SensorEventListener {
         ).getReference("sessions").child(sessionId).child("gameState");
 
         listenToSessionScores(sessionId);
+
+        String oppRole = isMe1 ? "player2" : "player1";
+        FirebaseDatabase.getInstance(
+                        "https://slagalica-8871d-default-rtdb.europe-west1.firebasedatabase.app"
+                ).getReference("sessions").child(sessionId)
+                .child(oppRole + "Disconnected")
+                .addValueEventListener(new ValueEventListener() {
+                    @Override
+                    public void onDataChange(DataSnapshot snapshot) {
+                        if (!Boolean.TRUE.equals(snapshot.getValue(Boolean.class))) return;
+
+                        boolean iAmController = (currentRound == 1 && isMe1)
+                                || (currentRound == 2 && !isMe1);
+
+                        if (phase == Phase.WAITING_OPPONENT && iAmController) {
+                            String oppKey = isMe1 ? "result_player2" : "result_player1";
+                            gameStateRef.child(oppKey).setValue(-1);
+                        } else if (!iAmController && phase == Phase.PLAYING) {
+                            if (phase == Phase.PLAYING) {
+                                cancelTimers();
+                                handleSubmit();
+                            }
+                        }
+                    }
+                    @Override public void onCancelled(DatabaseError e) {}
+                });
 
         mainRootView = inflater.inflate(R.layout.fragment_moj_broj, container, false);
 
@@ -173,8 +204,17 @@ public class MojBrojFragment extends Fragment implements SensorEventListener {
         gridNumbers.removeAllViews();
 
         tvRound.setText("Runda " + currentRound + "/2");
-        //updateScoreDisplay();
+        updateScoreDisplay();
         btnSubmit.setEnabled(false);
+
+        if (isChallengeMode) {
+            btnStop.setVisibility(View.GONE);
+            generateChallengeNumbers();
+            tvTarget.setText(String.valueOf(targetNumber));
+            populateNumberButtons();
+            startPlayPhase();
+            return;
+        }
 
         boolean iAmController = (currentRound == 1 && isMe1) || (currentRound == 2 && !isMe1);
 
@@ -195,6 +235,32 @@ public class MojBrojFragment extends Fragment implements SensorEventListener {
             btnStop.setEnabled(false);
             listenForNumbersFromFirebase();
         }
+    }
+
+    private void generateChallengeNumbers() {
+        long seed = 0;
+        if (roundSeed != null) {
+            seed = roundSeed.hashCode();
+        }
+        Random rnd = new Random(seed);
+
+        targetNumber = rnd.nextInt(900) + 100;
+
+        int[] singles = {1, 2, 3, 4, 5, 6, 7, 8, 9};
+        int[] mediums = {10, 15, 20};
+        int[] larges  = {25, 50, 75, 100};
+
+        int[] shuffled = singles.clone();
+        for (int i = shuffled.length - 1; i > 0; i--) {
+            int j = rnd.nextInt(i + 1);
+            int tmp = shuffled[i]; shuffled[i] = shuffled[j]; shuffled[j] = tmp;
+        }
+        availableNumbers[0] = shuffled[0];
+        availableNumbers[1] = shuffled[1];
+        availableNumbers[2] = shuffled[2];
+        availableNumbers[3] = shuffled[3];
+        availableNumbers[4] = mediums[rnd.nextInt(mediums.length)];
+        availableNumbers[5] = larges[rnd.nextInt(larges.length)];
     }
 
     private void handleStop() {
@@ -467,16 +533,32 @@ public class MojBrojFragment extends Fragment implements SensorEventListener {
         cancelTimers();
         phase = Phase.WAITING_OPPONENT;
         btnSubmit.setEnabled(false);
-        tvPhase.setText("Čekaj protivnika...");
 
         String expr = tvExpression.getText().toString();
         double result = evaluate(expr);
         int myResult = Double.isNaN(result) ? -1 : (int) result;
 
-        String myKey = isMe1 ? "result_player1" : "result_player2";
-        gameStateRef.child(myKey).setValue(myResult);
+        if (isChallengeMode) {
+            tvPhase.setText("Završeno!");
+            awardMyScore(myResult);
+            mainRootView.postDelayed(() -> endGame(), 1500);
+        } else {
+            tvPhase.setText("Čekaj protivnika...");
+            String myKey = isMe1 ? "result_player1" : "result_player2";
+            gameStateRef.child(myKey).setValue(myResult);
+            waitForBothResults();
+        }
+    }
 
-        waitForBothResults();
+    private void awardMyScore(int myResult) {
+        if (myResult == targetNumber) {
+            if (isMe1) player1Score += EXACT_POINTS;
+            else player2Score += EXACT_POINTS;
+        } else if (myResult != -1) {
+            if (isMe1) player1Score += CLOSEST_POINTS;
+            else player2Score += CLOSEST_POINTS;
+        }
+        updateScoreDisplay();
     }
 
     private void waitForBothResults() {
