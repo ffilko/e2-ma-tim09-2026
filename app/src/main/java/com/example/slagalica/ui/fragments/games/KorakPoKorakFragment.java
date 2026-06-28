@@ -62,6 +62,15 @@ public class KorakPoKorakFragment extends Fragment {
     private TextView[] stepViews;
     private boolean round2Prepared = false;
     private boolean gameEnded = false;
+    private DatabaseReference sessionScoresRef;
+    private ValueEventListener scoresListener;
+    private int cumulativeP1 = 0, cumulativeP2 = 0;
+
+    private boolean isChallengeMode = false;
+    private String roundSeed = null;
+    private int localRound = 1; // 1 ili 2
+    private boolean challengeFinished = false;
+
 
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater,
@@ -69,6 +78,9 @@ public class KorakPoKorakFragment extends Fragment {
                              @Nullable Bundle savedInstanceState) {
         View view = inflater.inflate(R.layout.fragment_korak_po_korak, container, false);
 
+        isChallengeMode = getArguments() != null
+                && getArguments().getBoolean("isChallengeMode", false);
+        roundSeed = getArguments() != null ? getArguments().getString("roundSeed") : null;
         String myRole = getArguments() != null ? getArguments().getString("myRole") : "player1";
         String sessionId = getArguments() != null ? getArguments().getString("sessionId") : null;
         isMe1 = "player1".equals(myRole);
@@ -76,6 +88,8 @@ public class KorakPoKorakFragment extends Fragment {
         gameStateRef = FirebaseDatabase.getInstance(
                 "https://slagalica-8871d-default-rtdb.europe-west1.firebasedatabase.app"
         ).getReference("sessions").child(sessionId).child("gameState");
+
+        listenToSessionScores(sessionId);
 
         tvRound  = view.findViewById(R.id.tvRound);
         tvTimer  = view.findViewById(R.id.tvTimer);
@@ -95,6 +109,36 @@ public class KorakPoKorakFragment extends Fragment {
             tvPlayer2Name.setText(getDisplayName());
         }
         listenForPlayerNames(sessionId);
+
+        String oppRole = isMe1 ? "player2" : "player1";
+        FirebaseDatabase.getInstance(
+                        "https://slagalica-8871d-default-rtdb.europe-west1.firebasedatabase.app"
+                ).getReference("sessions").child(sessionId)
+                .child(oppRole + "Disconnected")
+                .addValueEventListener(new ValueEventListener() {
+                    @Override
+                    public void onDataChange(DataSnapshot snapshot) {
+                        if (!Boolean.TRUE.equals(snapshot.getValue(Boolean.class))) return;
+                        if (gameEnded) return;
+
+                        boolean iAmController = (currentRound == 1 && isMe1)
+                                || (currentRound == 2 && !isMe1);
+
+                        if (iAmController) {
+                            // Protivnik (aktivni igrač) napustio — preskoči na sledeću rundu
+                            if (stepTimer != null) stepTimer.cancel();
+                            // Bez davanja šanse protivniku (on je napustio)
+                            finishRound(currentRound);
+                        } else {
+                            // Mi smo aktivni igrač — nastavimo normalno
+                            // Controller je napustio — preuzimamo kontrolu
+                            if (isActivePlayer && stepTimer == null) {
+                                startRevealLoop();
+                            }
+                        }
+                    }
+                    @Override public void onCancelled(DatabaseError e) {}
+                });
 
         etGuess.setEnabled(false);
         btnGuess.setEnabled(false);
@@ -127,7 +171,12 @@ public class KorakPoKorakFragment extends Fragment {
                 .get()
                 .addOnSuccessListener(querySnapshot -> {
                     if (!querySnapshot.isEmpty()) {
-                        int idx = new Random().nextInt(querySnapshot.size());
+                        int idx;
+                        if (isChallengeMode && roundSeed != null) {
+                            idx = Math.abs(roundSeed.hashCode()) % querySnapshot.size();
+                        } else {
+                            idx = new Random().nextInt(querySnapshot.size());
+                        }
                         Map<String, Object> data = querySnapshot.getDocuments().get(idx).getData();
                         List<String> stepList = (List<String>) data.get("steps");
                         answer = (String) data.get("answer");
@@ -170,10 +219,9 @@ public class KorakPoKorakFragment extends Fragment {
                             tvPhase.setText(round == 1 ? "Igrač 1 pogađa..." : "Igrač 2 pogađa...");
                         }
 
-                        tvRound.setText("Runda " + round + "/2");
+                        tvRound.setText(isChallengeMode ? "Runda 1/1" : "Runda " + round + "/2");
                         currentStep = 0;
                         initClueViews();
-
 
                         boolean iAmTimerController = (round == 1 && isMe1) || (round == 2 && !isMe1);
                         if (iAmTimerController) {
@@ -221,7 +269,7 @@ public class KorakPoKorakFragment extends Fragment {
         if (round != null) currentRound = round;
 
         initClueViews();
-        updateScores();
+        updateScoreDisplay();
         tvRound.setText("Runda " + currentRound + "/2");
 
         isActivePlayer = (currentRound == 1 && isMe1) || (currentRound == 2 && !isMe1);
@@ -263,7 +311,7 @@ public class KorakPoKorakFragment extends Fragment {
 
                 if (p1s != null) player1Score = p1s;
                 if (p2s != null) player2Score = p2s;
-                updateScores();
+                updateScoreDisplay();
 
 
                 if (step != null && stepViews != null && steps != null) {
@@ -362,7 +410,7 @@ public class KorakPoKorakFragment extends Fragment {
             }
         }
 
-        gameStateRef.child("player1Score").setValue(player1Score);
+        gameStateRef.child("player1Score").setValue( player1Score);
         gameStateRef.child("player2Score").setValue(player2Score);
     }
 
@@ -373,6 +421,10 @@ public class KorakPoKorakFragment extends Fragment {
 
     private void revealStep() {
         if (steps == null || currentStep >= steps.length) {
+            if (isChallengeMode) {
+                finishRound(currentRound);
+                return;
+            }
             gameStateRef.child("opponentChance").setValue(true);
             gameStateRef.child("phase").setValue("opponentChance");
 
@@ -412,6 +464,11 @@ public class KorakPoKorakFragment extends Fragment {
         etGuess.setEnabled(false);
         btnGuess.setEnabled(false);
 
+        if (isChallengeMode) {
+            gameStateRef.child("phase").setValue("finished");
+            return;
+        }
+
         if (round == 1) {
             gameStateRef.child("opponentChance").setValue(false);
             gameStateRef.child("currentStep").setValue(0);
@@ -448,7 +505,12 @@ public class KorakPoKorakFragment extends Fragment {
                     .get()
                     .addOnSuccessListener(querySnapshot -> {
                         if (!querySnapshot.isEmpty()) {
-                            int idx = new Random().nextInt(querySnapshot.size());
+                            int idx;
+                            if (roundSeed != null) {
+                                idx = Math.abs((roundSeed + "r2").hashCode()) % querySnapshot.size();
+                            } else {
+                                idx = new Random().nextInt(querySnapshot.size());
+                            }
                             Map<String, Object> data = querySnapshot.getDocuments()
                                     .get(idx).getData();
                             List<String> stepList = (List<String>) data.get("steps");
@@ -504,6 +566,7 @@ public class KorakPoKorakFragment extends Fragment {
 
     private void endGame() {
         if (stepTimer != null) stepTimer.cancel();
+
         if (gameStateListener != null) {
             gameStateRef.removeEventListener(gameStateListener);
             gameStateListener = null;
@@ -523,11 +586,8 @@ public class KorakPoKorakFragment extends Fragment {
         if (gameStateListener != null) {
             gameStateRef.removeEventListener(gameStateListener);
         }
-    }
-
-    private void updateScores() {
-        tvScore1.setText(String.valueOf(player1Score));
-        tvScore2.setText(String.valueOf(player2Score));
+        if (scoresListener != null && sessionScoresRef != null)
+            sessionScoresRef.removeEventListener(scoresListener);
     }
 
     private void setFallbackData() {
@@ -597,5 +657,29 @@ public class KorakPoKorakFragment extends Fragment {
             }
             @Override public void onCancelled(DatabaseError e) {}
         });
+    }
+
+    private void listenToSessionScores(String sessionId) {
+        sessionScoresRef = FirebaseDatabase.getInstance(
+                "https://slagalica-8871d-default-rtdb.europe-west1.firebasedatabase.app"
+        ).getReference("sessions").child(sessionId).child("scores");
+
+        scoresListener = new ValueEventListener() {
+            @Override
+            public void onDataChange(@NonNull DataSnapshot snap) {
+                Integer s1 = snap.child("player1").getValue(Integer.class);
+                Integer s2 = snap.child("player2").getValue(Integer.class);
+                cumulativeP1 = s1 != null ? s1 : 0;
+                cumulativeP2 = s2 != null ? s2 : 0;
+                updateScoreDisplay();
+            }
+            @Override public void onCancelled(@NonNull DatabaseError e) {}
+        };
+        sessionScoresRef.addValueEventListener(scoresListener);
+    }
+
+    private void updateScoreDisplay() {
+        if (tvScore1 != null) tvScore1.setText(String.valueOf(cumulativeP1 + player1Score));
+        if (tvScore2 != null) tvScore2.setText(String.valueOf(cumulativeP2 + player2Score));
     }
 }

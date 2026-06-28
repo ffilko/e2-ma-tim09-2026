@@ -44,6 +44,17 @@ public class MainActivity extends AppCompatActivity {
             requestPermissions(new String[]{Manifest.permission.POST_NOTIFICATIONS}, 100);
         }
 
+        com.google.firebase.messaging.FirebaseMessaging.getInstance().getToken()
+                .addOnSuccessListener(token -> {
+                    com.google.firebase.auth.FirebaseUser u =
+                            com.google.firebase.auth.FirebaseAuth.getInstance().getCurrentUser();
+                    if (u != null && token != null) {
+                        com.google.firebase.firestore.FirebaseFirestore.getInstance()
+                                .collection("users").document(u.getUid())
+                                .update("fcmToken", token);
+                    }
+                });
+
         ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main), (v, insets) -> {
             Insets systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
             v.setPadding(

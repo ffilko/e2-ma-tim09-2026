@@ -23,6 +23,7 @@ import com.example.slagalica.data.SessionManager;
 import com.google.firebase.database.DataSnapshot;
 import com.google.firebase.database.DatabaseError;
 import com.google.firebase.database.DatabaseReference;
+import com.google.firebase.database.FirebaseDatabase;
 import com.google.firebase.database.ValueEventListener;
 
 import java.util.ArrayList;
@@ -61,6 +62,7 @@ public class SkockoFragment extends Fragment {
     private final List<int[]> feedback = new ArrayList<>();
     private int attemptCount = 0;
     private boolean finished = false;
+    private boolean isChallengeMode = false;
     private int scoreP1 = 0, scoreP2 = 0;
     private long phaseStart = 0;
     private final List<Integer> currentGuess = new ArrayList<>();
@@ -69,6 +71,10 @@ public class SkockoFragment extends Fragment {
     private CountDownTimer timer;
     private long timerBase = -1;
     private boolean resultSent = false;
+    private DatabaseReference sessionScoresRef;
+    private ValueEventListener scoresListener;
+    private int cumulativeP1 = 0, cumulativeP2 = 0;
+    private String roundSeed = null;
 
     @Nullable
     @Override
@@ -83,10 +89,49 @@ public class SkockoFragment extends Fragment {
 
         String sessionId = requireArguments().getString("sessionId");
         myRole = requireArguments().getString("myRole");
+        isChallengeMode = getArguments() != null
+                && getArguments().getBoolean("isChallengeMode", false);
+        roundSeed = getArguments() != null ? getArguments().getString("roundSeed") : null;
 
         sessionManager = new SessionManager();
         sessionManager.initSession(sessionId, myRole);
         stateRef = sessionManager.getGameStateRef();
+        listenToSessionScores(sessionId);
+
+        String oppRole = "player1".equals(myRole) ? "player2" : "player1";
+        sessionManager.getGameStateRef().getParent()
+                .child(oppRole + "Disconnected")
+                .addValueEventListener(new ValueEventListener() {
+                    @Override
+                    public void onDataChange(@NonNull DataSnapshot snapshot) {
+                        if (!Boolean.TRUE.equals(snapshot.getValue(Boolean.class))) return;
+                        if (finished || resultSent) return;
+
+                        if (!isActive()) {
+                            // Protivnik napustio dok je on aktivan — daj potez nama
+                            // Ako je main faza, preskoči na bonus za nas
+                            // Ako je bonus faza protivnika, završi rundu
+                            if ("main".equals(phase)) {
+                                // Aktivni igrač je protivnik u main fazi — preskoči na bonus za nas
+                                if (!"player1".equals(myRole)) {
+                                    // player2 čeka na player1 koji igra main
+                                    // Ne možemo direktno startBonus jer samo player1 kontroliše
+                                    // Ali možemo setovati finished za ovu rundu
+                                }
+                                // Samo player1 može menjati state
+                                if ("player1".equals(myRole)) {
+                                    startBonus(); // preskoči na bonus (mi smo opponent)
+                                }
+                            } else if ("bonus".equals(phase)) {
+                                // Protivnik je u bonus fazi — završi rundu
+                                if ("player1".equals(myRole)) {
+                                    endRound();
+                                }
+                            }
+                        }
+                    }
+                    @Override public void onCancelled(@NonNull DatabaseError e) {}
+                });
 
         bindViews(view);
         setupListeners();
@@ -187,17 +232,31 @@ public class SkockoFragment extends Fragment {
         state.put("finished", false);
         state.put("scores", scores);
         state.put("phaseStart", System.currentTimeMillis());
+        state.put("isChallengeMode", isChallengeMode);
         stateRef.setValue(state);
     }
 
     private List<Integer> randomSecret() {
-        Random rnd = new Random();
+        Random rnd;
+        if (isChallengeMode && roundSeed != null) {
+            // Koristimo kombinaciju seed-a i trenutne runde da osiguramo
+            // da je za Rundu 1 kod oba igrača uvek ISTI random generator
+            rnd = new Random((roundSeed + "_skocko_round_" + round).hashCode());
+        } else {
+            rnd = new Random();
+        }
+
         List<Integer> s = new ArrayList<>(4);
-        for (int i = 0; i < 4; i++) s.add(rnd.nextInt(6));
+        for (int i = 0; i < 4; i++) {
+            s.add(rnd.nextInt(6)); // Generiše identične simbole za isti seed
+        }
         return s;
     }
 
     private void readState(DataSnapshot snap) {
+        Boolean ch = snap.child("isChallengeMode").getValue(Boolean.class);
+        if (ch != null) isChallengeMode = ch;
+
         Integer r = snap.child("round").getValue(Integer.class);
         round = r != null ? r : 1;
 
@@ -298,7 +357,14 @@ public class SkockoFragment extends Fragment {
         u.put("attemptCount", idx + 1);
 
         if (correct) {
-            int pts = "bonus".equals(phase) ? 10 : pointsForAttempt(idx + 1);
+            int pts;
+
+            if (isChallengeMode) {
+                // challenge: fiksno manje bodova
+                pts = "bonus".equals(phase) ? 5 : 10;
+            } else {
+                pts = "bonus".equals(phase) ? 10 : pointsForAttempt(idx + 1);
+            }
             u.put("scores/" + myRole, myScore() + pts);
             stateRef.updateChildren(u);
             Toast.makeText(getContext(), "Pogodak! +" + pts + " bodova",
@@ -308,8 +374,11 @@ public class SkockoFragment extends Fragment {
             stateRef.updateChildren(u);
             endRound();
         } else if (idx + 1 >= MAX_ATTEMPTS) {
-            stateRef.updateChildren(u);
-            startBonus();
+            if (isChallengeMode) {
+                endRound();
+            } else {
+                startBonus();
+            }
         } else {
             stateRef.updateChildren(u);
         }
@@ -328,6 +397,10 @@ public class SkockoFragment extends Fragment {
 
     private void endRound() {
         if (finished) return;
+        if (isChallengeMode) {
+            stateRef.child("finished").setValue(true);
+            return;
+        }
         if (round == 1) {
             Map<String, Object> u = new HashMap<>();
             u.put("round", 2);
@@ -387,7 +460,11 @@ public class SkockoFragment extends Fragment {
         if (!"player1".equals(myRole) || finished) return;
         if (round != roundAtStart || !phase.equals(phaseAtStart)) return;
         if ("main".equals(phase)) {
-            startBonus();
+            if (isChallengeMode) {
+                endRound();
+            } else {
+                startBonus();
+            }
         } else {
             endRound();
         }
@@ -399,8 +476,6 @@ public class SkockoFragment extends Fragment {
 
     private void render() {
         tvRound.setText("Runda " + round + "/2");
-        tvScore1.setText(String.valueOf(scoreP1));
-        tvScore2.setText(String.valueOf(scoreP2));
 
         boolean bonus = "bonus".equals(phase);
         if (finished) {
@@ -485,5 +560,31 @@ public class SkockoFragment extends Fragment {
         super.onDestroyView();
         if (timer != null) timer.cancel();
         if (stateListener != null) stateRef.removeEventListener(stateListener);
+        if (scoresListener != null && sessionScoresRef != null)
+            sessionScoresRef.removeEventListener(scoresListener);
+    }
+
+    private void listenToSessionScores(String sessionId) {
+        sessionScoresRef = FirebaseDatabase.getInstance(
+                "https://slagalica-8871d-default-rtdb.europe-west1.firebasedatabase.app"
+        ).getReference("sessions").child(sessionId).child("scores");
+
+        scoresListener = new ValueEventListener() {
+            @Override
+            public void onDataChange(@NonNull DataSnapshot snap) {
+                Integer s1 = snap.child("player1").getValue(Integer.class);
+                Integer s2 = snap.child("player2").getValue(Integer.class);
+                cumulativeP1 = s1 != null ? s1 : 0;
+                cumulativeP2 = s2 != null ? s2 : 0;
+                updateScoreDisplay();
+            }
+            @Override public void onCancelled(@NonNull DatabaseError e) {}
+        };
+        sessionScoresRef.addValueEventListener(scoresListener);
+    }
+
+    private void updateScoreDisplay() {
+        if (tvScore1 != null) tvScore1.setText(String.valueOf(cumulativeP1));
+        if (tvScore2 != null) tvScore2.setText(String.valueOf(cumulativeP2));
     }
 }

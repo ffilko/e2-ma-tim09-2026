@@ -114,4 +114,55 @@ public class SessionManager {
         this.myPlayerId = myRole;
         this.sessionRef = db.child(SESSIONS_PATH).child(sessionId);
     }
+
+    public ValueEventListener listenToScores(ValueEventListener listener) {
+        sessionRef.child("scores").addValueEventListener(listener);
+        return listener;
+    }
+
+    public void removeScoresListener(ValueEventListener listener) {
+        sessionRef.child("scores").removeEventListener(listener);
+    }
+
+    public void markDisconnected() {
+        sessionRef.child(myPlayerId + "Disconnected").setValue(true);
+    }
+
+    public void listenForOpponentDisconnect(String opponentRole, Runnable onDisconnected) {
+        sessionRef.child(opponentRole + "Disconnected")
+                .addValueEventListener(new ValueEventListener() {
+                    @Override
+                    public void onDataChange(@NonNull DataSnapshot snapshot) {
+                        if (Boolean.TRUE.equals(snapshot.getValue(Boolean.class))) {
+                            onDisconnected.run();
+                        }
+                    }
+                    @Override public void onCancelled(@NonNull DatabaseError error) {}
+                });
+    }
+
+    public void getPlayers(OnPlayersLoaded callback) {
+
+        sessionRef.addListenerForSingleValueEvent(new ValueEventListener() {
+            @Override
+            public void onDataChange(@NonNull DataSnapshot snapshot) {
+
+                String p1 = snapshot.child("player1Id").getValue(String.class);
+                String p2 = snapshot.child("player2Id").getValue(String.class);
+
+                callback.onLoaded(p1, p2);
+            }
+
+            @Override
+            public void onCancelled(@NonNull DatabaseError error) {
+
+            }
+        });
+
+    }
+
+    public interface OnPlayersLoaded{
+        void onLoaded(String player1,String player2);
+    }
+
 }

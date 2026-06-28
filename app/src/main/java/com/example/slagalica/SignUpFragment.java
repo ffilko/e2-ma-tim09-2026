@@ -8,6 +8,7 @@ import android.text.TextUtils;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.Spinner;
 import android.widget.Toast;
 
 import com.google.android.material.textfield.TextInputEditText;
@@ -72,7 +73,11 @@ public class SignUpFragment extends Fragment {
                             userData.put("tokens", 5);
                             userData.put("stars", 0);
                             userData.put("league", 0);
-                            userData.put("region", "");
+                            Spinner spinner = view.findViewById(R.id.spinnerRegion);
+
+                            String selectedRegion = spinner.getSelectedItem().toString();
+
+                            userData.put("region", selectedRegion);
                             userData.put("avatarUrl", "");
                             userData.put("createdAt", System.currentTimeMillis());
                             userData.put("lastTokenRefill", System.currentTimeMillis());

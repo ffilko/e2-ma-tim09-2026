@@ -24,6 +24,7 @@ import com.example.slagalica.data.SessionManager;
 import com.google.firebase.database.DataSnapshot;
 import com.google.firebase.database.DatabaseError;
 import com.google.firebase.database.DatabaseReference;
+import com.google.firebase.database.FirebaseDatabase;
 import com.google.firebase.database.ValueEventListener;
 import com.google.firebase.firestore.FirebaseFirestore;
 
@@ -67,6 +68,11 @@ public class AsocijacijeFragment extends Fragment {
     private long timerBase = -1;
     private boolean resultSent = false;
 
+    private DatabaseReference sessionScoresRef;
+    private ValueEventListener scoresListener;
+    private int cumulativeP1 = 0, cumulativeP2 = 0;
+    private boolean isChallengeMode = false;
+
     @Nullable
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container,
@@ -80,10 +86,33 @@ public class AsocijacijeFragment extends Fragment {
 
         String sessionId = requireArguments().getString("sessionId");
         myRole = requireArguments().getString("myRole");
+        isChallengeMode = requireArguments().getBoolean("isChallengeMode", false);
 
         sessionManager = new SessionManager();
         sessionManager.initSession(sessionId, myRole);
         stateRef = sessionManager.getGameStateRef();
+        listenToSessionScores(sessionId);
+
+        String oppRole = "player1".equals(myRole) ? "player2" : "player1";
+        sessionManager.getGameStateRef().getParent()
+                .child(oppRole + "Disconnected")
+                .addValueEventListener(new ValueEventListener() {
+                    @Override
+                    public void onDataChange(@NonNull DataSnapshot snapshot) {
+                        if (isChallengeMode) return; // Isključi proveru diskonekcije u solo modu
+                        if (!Boolean.TRUE.equals(snapshot.getValue(Boolean.class))) return;
+                        if (finished || resultSent) return;
+
+                        // Ako je protivnik na potezu, prebaci na nas
+                        if (!isMyTurn()) {
+                            Map<String, Object> u = new HashMap<>();
+                            u.put("turn", myRole);
+                            u.put("canGuess", false);
+                            stateRef.updateChildren(u);
+                        }
+                    }
+                    @Override public void onCancelled(@NonNull DatabaseError e) {}
+                });
 
         colorHidden = ContextCompat.getColor(requireContext(), R.color.slagalica_color);
 
@@ -254,9 +283,11 @@ public class AsocijacijeFragment extends Fragment {
                 .addOnFailureListener(e ->
                         android.util.Log.e("ASOC", "Greska pri citanju asocijacije", e));
     }
+
     private boolean isMyTurn() {
         return myRole != null && myRole.equals(turn);
     }
+
     private boolean allFieldsOpened() {
         for (int c = 0; c < 4; c++) {
             if (solved[c]) continue;
@@ -304,7 +335,15 @@ public class AsocijacijeFragment extends Fragment {
         } else {
             Toast.makeText(getContext(), "Netačno!", Toast.LENGTH_SHORT).show();
             etCols[c].setText("");
-            passTurn();
+
+            if (isChallengeMode) {
+                Map<String, Object> u = new HashMap<>();
+                u.put("canGuess", false);
+                stateRef.updateChildren(u);
+                tvPhase.setText("Netačno! Pokušajte ponovo.");
+            } else {
+                passTurn();
+            }
         }
     }
 
@@ -330,19 +369,26 @@ public class AsocijacijeFragment extends Fragment {
         } else {
             Toast.makeText(getContext(), "Netačno!", Toast.LENGTH_SHORT).show();
             etFinal.setText("");
-            passTurn();
-        }
-    }
 
-    private void passTurn() {
-        Map<String, Object> u = new HashMap<>();
-        u.put("turn", sessionManager.getOpponentId());
-        u.put("canGuess", false);
-        stateRef.updateChildren(u);
+            if (isChallengeMode) {
+                Map<String, Object> u = new HashMap<>();
+                u.put("canGuess", false);
+                stateRef.updateChildren(u);
+                tvPhase.setText("Netačno! Pokušajte ponovo.");
+            } else {
+                passTurn();
+            }
+        }
     }
 
     private void endRound() {
         if (finished) return;
+
+        if (isChallengeMode) {
+            stateRef.child("finished").setValue(true);
+            return;
+        }
+
         if (round == 1) {
             Map<String, Object> u = new HashMap<>();
             u.put("round", 2);
@@ -355,6 +401,15 @@ public class AsocijacijeFragment extends Fragment {
         } else {
             stateRef.child("finished").setValue(true);
         }
+    }
+
+    private void passTurn() {
+        if (isChallengeMode) return;
+
+        Map<String, Object> u = new HashMap<>();
+        u.put("turn", sessionManager.getOpponentId());
+        u.put("canGuess", false);
+        stateRef.updateChildren(u);
     }
 
     private void onGameFinished() {
@@ -404,15 +459,19 @@ public class AsocijacijeFragment extends Fragment {
     }
 
     private void render() {
-        tvRound.setText("Runda " + round + "/2");
-        tvScore1.setText(String.valueOf(scoreP1));
-        tvScore2.setText(String.valueOf(scoreP2));
+        if (isChallengeMode) {
+            tvRound.setText("Runda 1/1");
+        } else {
+            tvRound.setText("Runda " + round + "/2");
+        }
 
         boolean mayGuess = mayGuessNow();
         boolean mayOpen = isMyTurn() && !finished && !mayGuess;
 
         if (finished) {
             tvPhase.setText("Kraj igre");
+        } else if (isChallengeMode) {
+            tvPhase.setText(mayGuess ? "Pogodi rešenje kolone ili konačno!" : "Otvori bilo koje polje");
         } else if (isMyTurn()) {
             tvPhase.setText(mayGuess ? "Ti pogađaš" : "Ti otvaraš polje");
         } else {
@@ -443,7 +502,13 @@ public class AsocijacijeFragment extends Fragment {
 
         etFinal.setEnabled(mayGuess);
         btnSubmitFinal.setEnabled(mayGuess);
-        btnPass.setEnabled(mayGuess);
+
+        if (isChallengeMode) {
+            btnPass.setVisibility(View.GONE);
+        } else {
+            btnPass.setVisibility(View.VISIBLE);
+            btnPass.setEnabled(mayGuess);
+        }
     }
 
     @Override
@@ -451,5 +516,32 @@ public class AsocijacijeFragment extends Fragment {
         super.onDestroyView();
         if (timer != null) timer.cancel();
         if (stateListener != null) stateRef.removeEventListener(stateListener);
+
+        if (scoresListener != null && sessionScoresRef != null)
+            sessionScoresRef.removeEventListener(scoresListener);
+    }
+
+    private void listenToSessionScores(String sessionId) {
+        sessionScoresRef = FirebaseDatabase.getInstance(
+                "https://slagalica-8871d-default-rtdb.europe-west1.firebasedatabase.app"
+        ).getReference("sessions").child(sessionId).child("scores");
+
+        scoresListener = new ValueEventListener() {
+            @Override
+            public void onDataChange(@NonNull DataSnapshot snap) {
+                Integer s1 = snap.child("player1").getValue(Integer.class);
+                Integer s2 = snap.child("player2").getValue(Integer.class);
+                cumulativeP1 = s1 != null ? s1 : 0;
+                cumulativeP2 = s2 != null ? s2 : 0;
+                updateScoreDisplay();
+            }
+            @Override public void onCancelled(@NonNull DatabaseError e) {}
+        };
+        sessionScoresRef.addValueEventListener(scoresListener);
+    }
+
+    private void updateScoreDisplay() {
+        if (tvScore1 != null) tvScore1.setText(String.valueOf(cumulativeP1));
+        if (tvScore2 != null) tvScore2.setText(String.valueOf(cumulativeP2));
     }
 }

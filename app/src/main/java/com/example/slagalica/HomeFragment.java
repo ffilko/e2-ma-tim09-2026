@@ -10,6 +10,7 @@ import androidx.fragment.app.Fragment;
 
 import com.example.slagalica.MainActivity;
 import com.example.slagalica.R;
+import com.google.android.material.bottomnavigation.BottomNavigationView;
 
 public class HomeFragment extends Fragment {
 

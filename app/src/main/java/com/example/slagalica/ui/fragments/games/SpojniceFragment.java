@@ -10,12 +10,10 @@ import android.view.ViewGroup;
 import android.widget.Button;
 import android.widget.TextView;
 import android.widget.Toast;
-
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.core.content.ContextCompat;
 import androidx.fragment.app.Fragment;
-
 import com.example.slagalica.R;
 import com.google.firebase.database.DataSnapshot;
 import com.google.firebase.database.DatabaseError;
@@ -24,13 +22,13 @@ import com.google.firebase.database.FirebaseDatabase;
 import com.google.firebase.database.ValueEventListener;
 import com.google.firebase.firestore.FirebaseFirestore;
 import com.google.firebase.firestore.QueryDocumentSnapshot;
-
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Random;
 
 public class SpojniceFragment extends Fragment {
 
@@ -42,8 +40,10 @@ public class SpojniceFragment extends Fragment {
     private Button[] rightButtons = new Button[5];
     private Button btnConnect, btnClear, btnFinish;
 
+    private boolean isChallengeMode = false;
     private boolean isMe1;
     private String myRole;
+
     private DatabaseReference gameStateRef;
     private ValueEventListener gameStateListener;
 
@@ -52,7 +52,6 @@ public class SpojniceFragment extends Fragment {
     private int player2Score = 0;
     private boolean gameEnded = false;
     private boolean resultSent = false;
-
     private CountDownTimer roundTimer;
 
     private String category = "";
@@ -66,30 +65,79 @@ public class SpojniceFragment extends Fragment {
 
     private String activePlayer = "player1";
     private String roundPhase = "main"; // main, opponent_chance
+
     // paired[i] = true ako je levi pojam i uspešno spojen (od strane bilo kog igrača)
     private boolean[] paired = new boolean[5];
-    // attempted[i] = true ako je trenutni igrač već probao levi pojam i u main fazi
+    // attemptedThisTurn[i] = true ako je trenutni igrač već probao levi pojam i u main fazi
     private boolean[] attemptedThisTurn = new boolean[5];
+
     private int loadedRound = -1;
     private String lastTurnKey = "";
 
+    private DatabaseReference sessionScoresRef;
+    private ValueEventListener scoresListener;
+
+    private String roundSeed = null;
+
     @Nullable
     @Override
-    public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container,
-                             @Nullable Bundle savedInstanceState) {
+    public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
         View view = inflater.inflate(R.layout.fragment_spojnice, container, false);
 
         myRole = getArguments() != null ? getArguments().getString("myRole") : "player1";
         String sessionId = getArguments() != null ? getArguments().getString("sessionId") : null;
+        roundSeed = getArguments() != null ? getArguments().getString("roundSeed") : null;
+        isChallengeMode = getArguments() != null && getArguments().getBoolean("isChallengeMode", false);
         isMe1 = "player1".equals(myRole);
 
         gameStateRef = FirebaseDatabase.getInstance(
                 "https://slagalica-8871d-default-rtdb.europe-west1.firebasedatabase.app"
         ).getReference("sessions").child(sessionId).child("gameState");
 
+        if (sessionId != null) listenToSessionScores(sessionId);
+
+        String oppRole = isMe1 ? "player2" : "player1";
+        FirebaseDatabase.getInstance(
+                        "https://slagalica-8871d-default-rtdb.europe-west1.firebasedatabase.app"
+                ).getReference("sessions").child(sessionId)
+                .child(oppRole + "Disconnected")
+                .addValueEventListener(new ValueEventListener() {
+                    @Override
+                    public void onDataChange(@NonNull DataSnapshot snapshot) {
+                        if (!Boolean.TRUE.equals(snapshot.getValue(Boolean.class))) return;
+                        if (gameEnded) return;
+                        if (!isMyTurn()) {
+                            // Protivnik napustio dok je na njemu red — odmah završi rundu
+                            if (roundTimer != null) roundTimer.cancel();
+                            // Preskoči na opponent_chance AKO smo u main fazi i ima nepovezanih
+                            // ili odmah na sledeću rundu
+                            gameStateRef.addListenerForSingleValueEvent(new ValueEventListener() {
+                                @Override
+                                public void onDataChange(@NonNull DataSnapshot snap) {
+                                    String rPhase = snap.child("roundPhase").getValue(String.class);
+                                    if ("main".equals(rPhase)) {
+                                        // Daj šansu nama (koji smo ostali)
+                                        startOpponentChance();
+                                    } else {
+                                        // Bili smo u opponent_chance — završi rundu
+                                        advanceRound();
+                                    }
+                                }
+
+                                @Override
+                                public void onCancelled(@NonNull DatabaseError e) {
+                                }
+                            });
+                        }
+                    }
+
+                    @Override
+                    public void onCancelled(@NonNull DatabaseError e) {
+                    }
+                });
+
         bindViews(view);
         setupClickListeners();
-
         setInputEnabled(false);
         tvPhase.setText("Učitavanje...");
 
@@ -150,19 +198,22 @@ public class SpojniceFragment extends Fragment {
                     for (QueryDocumentSnapshot doc : querySnapshot) {
                         allRounds.add(doc.getData());
                     }
-
                     if (allRounds.size() < 2) {
                         allRounds.clear();
                         allRounds.add(getFallbackRound1());
                         allRounds.add(getFallbackRound2());
                     }
+                    if (roundSeed != null) {
+                        Collections.sort(allRounds, (a, b) -> String.valueOf(a).hashCode() - String.valueOf(b).hashCode());
+                    } else {
+                        Collections.shuffle(allRounds);
+                    }
 
-                    Collections.shuffle(allRounds);
                     Map<String, Object> r1 = allRounds.get(0);
                     Map<String, Object> r2 = allRounds.size() > 1 ? allRounds.get(1) : allRounds.get(0);
 
-                    List<Integer> shuffle1 = getShuffledIndices();
-                    List<Integer> shuffle2 = getShuffledIndices();
+                    List<Integer> shuffle1 = getShuffledIndices(roundSeed != null ? roundSeed + "s1" : null);
+                    List<Integer> shuffle2 = getShuffledIndices(roundSeed != null ? roundSeed + "s2" : null);
 
                     Map<String, Object> state = new HashMap<>();
                     state.put("round", 1);
@@ -176,6 +227,7 @@ public class SpojniceFragment extends Fragment {
                     state.put("round1Shuffle", shuffle1);
                     state.put("round2", r2);
                     state.put("round2Shuffle", shuffle2);
+                    state.put("isChallengeMode", isChallengeMode);
 
                     Map<String, Object> pairedMap = new HashMap<>();
                     for (int i = 0; i < 5; i++) pairedMap.put(String.valueOf(i), false);
@@ -200,9 +252,10 @@ public class SpojniceFragment extends Fragment {
         state.put("phase", "playing");
         state.put("roundStart", System.currentTimeMillis());
         state.put("round1", getFallbackRound1());
-        state.put("round1Shuffle", getShuffledIndices());
+        state.put("round1Shuffle", getShuffledIndices(roundSeed != null ? roundSeed + "s1" : null));
         state.put("round2", getFallbackRound2());
-        state.put("round2Shuffle", getShuffledIndices());
+        state.put("round2Shuffle", getShuffledIndices(roundSeed != null ? roundSeed + "s2 " : null));
+        state.put("isChallengeMode", isChallengeMode);
 
         Map<String, Object> pairedMap = new HashMap<>();
         for (int i = 0; i < 5; i++) pairedMap.put(String.valueOf(i), false);
@@ -237,7 +290,6 @@ public class SpojniceFragment extends Fragment {
 
     private void listenToGameState() {
         if (gameStateListener != null) return;
-
         gameStateListener = new ValueEventListener() {
             @Override
             public void onDataChange(@NonNull DataSnapshot snapshot) {
@@ -249,7 +301,9 @@ public class SpojniceFragment extends Fragment {
                 Integer p1 = snapshot.child("player1Score").getValue(Integer.class);
                 Integer p2 = snapshot.child("player2Score").getValue(Integer.class);
                 String phase = snapshot.child("phase").getValue(String.class);
+                Boolean ch = snapshot.child("isChallengeMode").getValue(Boolean.class);
 
+                if (ch != null) isChallengeMode = ch;
                 if (round != null) currentRound = round;
                 if (active != null) activePlayer = active;
                 if (rPhase != null) roundPhase = rPhase;
@@ -304,7 +358,6 @@ public class SpojniceFragment extends Fragment {
         String shuffleKey = currentRound == 1 ? "round1Shuffle" : "round2Shuffle";
 
         DataSnapshot roundData = snapshot.child(roundKey);
-
         category = roundData.child("category").getValue(String.class);
         if (category == null) category = "";
 
@@ -358,7 +411,11 @@ public class SpojniceFragment extends Fragment {
     }
 
     private void renderUI() {
-        tvRound.setText("Runda " + currentRound + "/2");
+        if (isChallengeMode) {
+            tvRound.setText("Runda 1/1");
+        } else {
+            tvRound.setText("Runda " + currentRound + "/2");
+        }
         updateScores();
 
         if (gameEnded) {
@@ -480,7 +537,6 @@ public class SpojniceFragment extends Fragment {
             Toast.makeText(getContext(), "Izaberi pojam iz obe kolone.", Toast.LENGTH_SHORT).show();
             return;
         }
-
         if (paired[selectedLeft]) {
             Toast.makeText(getContext(), "Već povezano.", Toast.LENGTH_SHORT).show();
             return;
@@ -488,21 +544,17 @@ public class SpojniceFragment extends Fragment {
 
         String selectedRightText = rightButtons[selectedRight].getText().toString();
         String correctRightText = originalRight.get(correctMapping[selectedLeft]);
-
         boolean isCorrect = selectedRightText.equals(correctRightText);
 
         Map<String, Object> update = new HashMap<>();
-
         // U OBE faze: probano = true (može jednom)
         update.put("attempted/" + selectedLeft, true);
 
         if (isCorrect) {
             update.put("paired/" + selectedLeft, true);
-
             String scorer = isMe1 ? "player1Score" : "player2Score";
             int currentScore = isMe1 ? player1Score : player2Score;
             update.put(scorer, currentScore + POINTS_PER_PAIR);
-
             Toast.makeText(getContext(), "Tačno! +2 boda", Toast.LENGTH_SHORT).show();
         } else {
             if ("main".equals(roundPhase)) {
@@ -545,10 +597,19 @@ public class SpojniceFragment extends Fragment {
                     return;
                 }
 
-                // Ako su svi levi probani u main fazi - daj šansu protivniku
+                // Ako su svi levi probani u main fazi:
+                // - u challenge/solo modu nema protivnika koji bi imao "šansu" za preostale
+                //   parove, pa se ide ODMAH na sledeću rundu (FIX: ranije se ovde uvek
+                //   zvalo startOpponentChance(), što je u challenge modu zaglavljivalo igru
+                //   jer "opponent_chance" prebacuje red na ghost "player2" koji ne postoji)
+                // - u običnom 1v1 modu i dalje se daje šansa protivniku
                 if ("main".equals(phase) && allDone) {
                     if (roundTimer != null) roundTimer.cancel();
-                    startOpponentChance();
+                    if (isChallengeMode) {
+                        advanceRound();
+                    } else {
+                        startOpponentChance();
+                    }
                 }
                 // Ako su svi probani u opponent_chance fazi - kraj runde
                 else if ("opponent_chance".equals(phase) && allDone) {
@@ -568,12 +629,15 @@ public class SpojniceFragment extends Fragment {
         if (roundTimer != null) roundTimer.cancel();
 
         if ("main".equals(roundPhase)) {
-            // Proveri ima li nepovezanih
             int unpairedCount = 0;
             for (boolean p : paired) if (!p) unpairedCount++;
 
             if (unpairedCount > 0) {
-                startOpponentChance();
+                if (isChallengeMode) {
+                    advanceRound();
+                } else {
+                    startOpponentChance();
+                }
             } else {
                 advanceRound();
             }
@@ -584,8 +648,6 @@ public class SpojniceFragment extends Fragment {
 
     private void startOpponentChance() {
         String opponent = isMe1 ? "player2" : "player1";
-
-        // Resetuj "attempted" za novu fazu
         Map<String, Object> u = new HashMap<>();
         u.put("activePlayer", opponent);
         u.put("roundPhase", "opponent_chance");
@@ -599,10 +661,14 @@ public class SpojniceFragment extends Fragment {
     }
 
     private void advanceRound() {
+        if (isChallengeMode) {
+            gameStateRef.child("phase").setValue("finished");
+            return;
+        }
         if (currentRound == 1) {
             Map<String, Object> u = new HashMap<>();
             u.put("round", 2);
-            u.put("activePlayer", "player2");
+            u.put("activePlayer", isChallengeMode ? myRole : "player2");
             u.put("roundPhase", "main");
             u.put("roundStart", System.currentTimeMillis());
 
@@ -622,7 +688,6 @@ public class SpojniceFragment extends Fragment {
 
     private void startTimer(long roundStart) {
         if (roundTimer != null) roundTimer.cancel();
-
         long elapsed = System.currentTimeMillis() - roundStart;
         long remaining = ROUND_DURATION_MS - elapsed;
 
@@ -650,7 +715,6 @@ public class SpojniceFragment extends Fragment {
     private void endGame() {
         if (resultSent) return;
         resultSent = true;
-
         if (roundTimer != null) roundTimer.cancel();
         if (gameStateListener != null) {
             gameStateRef.removeEventListener(gameStateListener);
@@ -665,7 +729,7 @@ public class SpojniceFragment extends Fragment {
 
     private void updateScores() {
         if (tvScores != null) {
-            tvScores.setText("Igrač 1: " + player1Score + "  |  Igrač 2: " + player2Score);
+            tvScores.setText("Igrač 1: " + player1Score + " | Igrač 2: " + player2Score);
         }
     }
 
@@ -677,10 +741,14 @@ public class SpojniceFragment extends Fragment {
         if (btnFinish != null) btnFinish.setEnabled(enabled);
     }
 
-    private List<Integer> getShuffledIndices() {
+    private List<Integer> getShuffledIndices(String seed) {
         List<Integer> indices = new ArrayList<>();
         for (int i = 0; i < 5; i++) indices.add(i);
-        Collections.shuffle(indices);
+        if (seed != null) {
+            Collections.shuffle(indices, new Random(seed.hashCode()));
+        } else {
+            Collections.shuffle(indices);
+        }
         return indices;
     }
 
@@ -688,15 +756,25 @@ public class SpojniceFragment extends Fragment {
         Map<String, Object> r = new HashMap<>();
         r.put("category", "Poveži izvođače sa pesmama");
         List<String> left = new ArrayList<>();
-        left.add("Bajaga"); left.add("Zdravko Čolić"); left.add("Riblja Čorba");
-        left.add("Marija Šerifović"); left.add("Đorđe Balašević");
+        left.add("Bajaga");
+        left.add("Zdravko Čolić");
+        left.add("Riblja Čorba");
+        left.add("Marija Šerifović");
+        left.add("Đorđe Balašević");
         r.put("left", left);
         List<String> right = new ArrayList<>();
-        right.add("Moji drugovi"); right.add("Ti se ljubiš"); right.add("Pogledaj dom svoj anđele");
-        right.add("Molitva"); right.add("Priča o Vasi Ladačkom");
+        right.add("Moji drugovi");
+        right.add("Ti se ljubiš");
+        right.add("Pogledaj dom svoj anđele");
+        right.add("Molitva");
+        right.add("Priča o Vasi Ladačkom");
         r.put("right", right);
         List<Integer> correct = new ArrayList<>();
-        correct.add(0); correct.add(1); correct.add(2); correct.add(3); correct.add(4);
+        correct.add(0);
+        correct.add(1);
+        correct.add(2);
+        correct.add(3);
+        correct.add(4);
         r.put("correct", correct);
         return r;
     }
@@ -705,15 +783,25 @@ public class SpojniceFragment extends Fragment {
         Map<String, Object> r = new HashMap<>();
         r.put("category", "Poveži države sa gradovima");
         List<String> left = new ArrayList<>();
-        left.add("Francuska"); left.add("Nemačka"); left.add("Italija");
-        left.add("Španija"); left.add("Portugal");
+        left.add("Francuska");
+        left.add("Nemačka");
+        left.add("Italija");
+        left.add("Španija");
+        left.add("Portugal");
         r.put("left", left);
         List<String> right = new ArrayList<>();
-        right.add("Berlin"); right.add("Rim"); right.add("Pariz");
-        right.add("Lisabon"); right.add("Madrid");
+        right.add("Berlin");
+        right.add("Rim");
+        right.add("Pariz");
+        right.add("Lisabon");
+        right.add("Madrid");
         r.put("right", right);
         List<Integer> correct = new ArrayList<>();
-        correct.add(2); correct.add(0); correct.add(1); correct.add(4); correct.add(3);
+        correct.add(2);
+        correct.add(0);
+        correct.add(1);
+        correct.add(4);
+        correct.add(3);
         r.put("correct", correct);
         return r;
     }
@@ -725,5 +813,26 @@ public class SpojniceFragment extends Fragment {
         if (gameStateListener != null) {
             gameStateRef.removeEventListener(gameStateListener);
         }
+        if (scoresListener != null && sessionScoresRef != null) sessionScoresRef.removeEventListener(scoresListener);
+    }
+
+    private void listenToSessionScores(String sessionId) {
+        sessionScoresRef = FirebaseDatabase.getInstance(
+                "https://slagalica-8871d-default-rtdb.europe-west1.firebasedatabase.app"
+        ).getReference("sessions").child(sessionId).child("scores");
+
+        scoresListener = new ValueEventListener() {
+            @Override
+            public void onDataChange(@NonNull DataSnapshot snap) {
+                Integer s1 = snap.child("player1").getValue(Integer.class);
+                Integer s2 = snap.child("player2").getValue(Integer.class);
+                if (tvScores != null) tvScores.setText("Igrač 1: " + (s1 != null ? s1 : 0) + " | Igrač 2: " + (s2 != null ? s2 : 0));
+            }
+
+            @Override
+            public void onCancelled(@NonNull DatabaseError e) {
+            }
+        };
+        sessionScoresRef.addValueEventListener(scoresListener);
     }
 }

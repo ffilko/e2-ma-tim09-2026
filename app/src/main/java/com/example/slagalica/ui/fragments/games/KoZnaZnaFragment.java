@@ -55,6 +55,12 @@ public class KoZnaZnaFragment extends Fragment {
 
     private List<Map<String, Object>> questions = new ArrayList<>();
     private int selectedAnswer = -1;
+    private DatabaseReference sessionScoresRef;
+    private ValueEventListener scoresListener;
+    private boolean questionProcessed = false;
+    private boolean isChallengeMode = false;
+    private String roundSeed = null;
+
 
     @Nullable
     @Override
@@ -63,6 +69,10 @@ public class KoZnaZnaFragment extends Fragment {
                              @Nullable Bundle savedInstanceState) {
         View view = inflater.inflate(R.layout.fragment_ko_zna_zna, container, false);
 
+        isChallengeMode = getArguments() != null
+                && getArguments().getBoolean("isChallengeMode", false);
+        roundSeed = getArguments() != null ? getArguments().getString("roundSeed") : null;
+
         myRole = getArguments() != null ? getArguments().getString("myRole") : "player1";
         String sessionId = getArguments() != null ? getArguments().getString("sessionId") : null;
         isMe1 = "player1".equals(myRole);
@@ -70,6 +80,52 @@ public class KoZnaZnaFragment extends Fragment {
         gameStateRef = FirebaseDatabase.getInstance(
                 "https://slagalica-8871d-default-rtdb.europe-west1.firebasedatabase.app"
         ).getReference("sessions").child(sessionId).child("gameState");
+
+        if (sessionId != null) listenToSessionScores(sessionId);
+
+        String oppRole = isMe1 ? "player2" : "player1";
+        FirebaseDatabase.getInstance(
+                        "https://slagalica-8871d-default-rtdb.europe-west1.firebasedatabase.app"
+                ).getReference("sessions").child(sessionId)
+                .child(oppRole + "Disconnected")
+                .addValueEventListener(new ValueEventListener() {
+                    @Override
+                    public void onDataChange(@NonNull DataSnapshot snapshot) {
+                        if (!Boolean.TRUE.equals(snapshot.getValue(Boolean.class))) return;
+                        if (gameEnded) return;
+
+                        // Ako čekamo protivnikov odgovor, upiši -1 za njega odmah
+                        if (isMe1) {
+                            // Ja sam controller — upiši protivnikov odgovor kao prazan
+                            gameStateRef.addListenerForSingleValueEvent(new ValueEventListener() {
+                                @Override
+                                public void onDataChange(@NonNull DataSnapshot snap) {
+                                    Integer p2a = snap.child("player2Answer").getValue(Integer.class);
+                                    if (p2a == null) {
+                                        Map<String, Object> update = new HashMap<>();
+                                        update.put("player2Answer", -1);
+                                        update.put("player2AnswerTime", Long.MAX_VALUE);
+                                        gameStateRef.updateChildren(update);
+                                    }
+                                }
+                                @Override public void onCancelled(@NonNull DatabaseError e) {}
+                            });
+                        } else {
+                            // Ja nisam controller — upiši moj odgovor ako ga nisam dao
+                            if (!answerSubmitted) {
+                                answerSubmitted = true;
+                                setButtonsEnabled(false);
+                                btnSubmit.setEnabled(false);
+                                Map<String, Object> update = new HashMap<>();
+                                update.put("player1Answer", -1);
+                                update.put("player1AnswerTime", Long.MAX_VALUE);
+                                update.put("timeUp", true);
+                                gameStateRef.updateChildren(update);
+                            }
+                        }
+                    }
+                    @Override public void onCancelled(@NonNull DatabaseError e) {}
+                });
 
         tvRound = view.findViewById(R.id.tvRound);
         tvTimer = view.findViewById(R.id.tvTimer);
@@ -114,7 +170,12 @@ public class KoZnaZnaFragment extends Fragment {
                 .get()
                 .addOnSuccessListener(querySnapshot -> {
                     if (!querySnapshot.isEmpty()) {
-                        int idx = new Random().nextInt(querySnapshot.size());
+                        int idx;
+                        if (roundSeed != null) {
+                            idx = Math.abs(roundSeed.hashCode()) % querySnapshot.size();
+                        } else {
+                            idx = new Random().nextInt(querySnapshot.size());
+                        }
                         Map<String, Object> data = querySnapshot.getDocuments().get(idx).getData();
                         if (data != null) {
                             List<Map<String, Object>> qs = (List<Map<String, Object>>) data.get("questions");
@@ -223,6 +284,7 @@ public class KoZnaZnaFragment extends Fragment {
 
                 Integer cq = snapshot.child("currentQuestion").getValue(Integer.class);
                 String phase = snapshot.child("phase").getValue(String.class);
+                questionProcessed = false;
 
                 if ("finished".equals(phase) && !gameEnded) {
                     gameEnded = true;
@@ -237,19 +299,35 @@ public class KoZnaZnaFragment extends Fragment {
                     showQuestion(currentQuestion);
                 }
 
-                if (isMe1) {
-                    Integer p1a = snapshot.child("player1Answer").getValue(Integer.class);
-                    Integer p2a = snapshot.child("player2Answer").getValue(Integer.class);
-                    Long p1t = snapshot.child("player1AnswerTime").getValue(Long.class);
-                    Long p2t = snapshot.child("player2AnswerTime").getValue(Long.class);
+                if (!questionProcessed) {
 
-                    boolean p1Answered = p1a != null;
-                    boolean p2Answered = p2a != null;
+                    if (isChallengeMode) {
+                        Integer myAnswer = isMe1
+                                ? snapshot.child("player1Answer").getValue(Integer.class)
+                                : snapshot.child("player2Answer").getValue(Integer.class);
 
-                    Boolean timeUp = snapshot.child("timeUp").getValue(Boolean.class);
+                        Long myTime = isMe1
+                                ? snapshot.child("player1AnswerTime").getValue(Long.class)
+                                : snapshot.child("player2AnswerTime").getValue(Long.class);
 
-                    if ((p1Answered && p2Answered) || Boolean.TRUE.equals(timeUp)) {
-                        processAnswers(p1a, p2a, p1t, p2t);
+                        Boolean timeUp = snapshot.child("timeUp").getValue(Boolean.class);
+
+                        if (myAnswer != null || Boolean.TRUE.equals(timeUp)) {
+                            questionProcessed = true;
+
+                            processChallengeAnswer(myAnswer, myTime);
+                        }
+                    } else {
+                        Integer p1a = snapshot.child("player1Answer").getValue(Integer.class);
+                        Integer p2a = snapshot.child("player2Answer").getValue(Integer.class);
+                        Long p1t = snapshot.child("player1AnswerTime").getValue(Long.class);
+                        Long p2t = snapshot.child("player2AnswerTime").getValue(Long.class);
+                        Boolean timeUp = snapshot.child("timeUp").getValue(Boolean.class);
+
+                        if ((p1a != null && p2a != null) || Boolean.TRUE.equals(timeUp)) {
+                            questionProcessed = true;
+                            processAnswers(p1a, p2a, p1t, p2t);
+                        }
                     }
                 }
             }
@@ -259,6 +337,45 @@ public class KoZnaZnaFragment extends Fragment {
             }
         };
         gameStateRef.addValueEventListener(gameStateListener);
+    }
+
+    private void processChallengeAnswer(Integer answer, Long time) {
+
+        Map<String, Object> q = questions.get(currentQuestion);
+        int correct = ((Long) q.get("correct")).intValue();
+
+        int myAnswer = answer != null ? answer : -1;
+
+        if (myAnswer == correct) {
+            if (isMe1) player1Score += CORRECT_POINTS;
+            else player2Score += CORRECT_POINTS;
+        } else if (myAnswer != -1) {
+            if (isMe1) player1Score += WRONG_POINTS;
+            else player2Score += WRONG_POINTS;
+        }
+
+        updateScores();
+
+        int nextQ = currentQuestion + 1;
+
+        Map<String, Object> update = new HashMap<>();
+        update.put("player1Score", player1Score);
+        update.put("player2Score", player2Score);
+
+        update.put("player1Answer", null);
+        update.put("player2Answer", null);
+        update.put("player1AnswerTime", null);
+        update.put("player2AnswerTime", null);
+        update.put("timeUp", null);
+
+        if (nextQ >= TOTAL_QUESTIONS || nextQ >= questions.size()) {
+            update.put("phase", "finished");
+        } else {
+            update.put("currentQuestion", nextQ);
+            update.put("questionStartTime", System.currentTimeMillis());
+        }
+
+        gameStateRef.updateChildren(update);
     }
 
     @SuppressWarnings("unchecked")
@@ -288,6 +405,7 @@ public class KoZnaZnaFragment extends Fragment {
 
         selectedAnswer = -1;
         answerSubmitted = false;
+        questionProcessed = false;
         setButtonsEnabled(true);
         btnSubmit.setEnabled(true);
 
@@ -302,7 +420,9 @@ public class KoZnaZnaFragment extends Fragment {
             @Override
             public void onFinish() {
                 if (tvTimer != null) tvTimer.setText("0.0");
-                if (!answerSubmitted) {
+                if (isChallengeMode && !answerSubmitted) {
+                    submitAnswer();
+                } else if (!answerSubmitted && !isChallengeMode) {
                     answerSubmitted = true;
                     setButtonsEnabled(false);
                     btnSubmit.setEnabled(false);
@@ -354,7 +474,6 @@ public class KoZnaZnaFragment extends Fragment {
 
         int answer = selectedAnswer >= 0 ? selectedAnswer : -1;
 
-        // Get question start time and calculate relative response time
         gameStateRef.child("questionStartTime").addListenerForSingleValueEvent(new ValueEventListener() {
             @Override
             public void onDataChange(@NonNull DataSnapshot snapshot) {
@@ -365,7 +484,7 @@ public class KoZnaZnaFragment extends Fragment {
 
                 Map<String, Object> update = new HashMap<>();
                 update.put(myAnswerKey, answer);
-                update.put(myTimeKey, responseTime); // relativno vreme, ne apsolutno
+                update.put(myTimeKey, responseTime);
                 gameStateRef.updateChildren(update);
             }
 
@@ -373,7 +492,11 @@ public class KoZnaZnaFragment extends Fragment {
             public void onCancelled(@NonNull DatabaseError error) {}
         });
 
-        tvPhase.setText("Čekam protivnika...");
+        if (isChallengeMode) {
+            tvPhase.setText("Obrađujem odgovor...");
+        } else {
+            tvPhase.setText("Čekam protivnika...");
+        }
     }
 
     private void processAnswers(Integer p1Answer, Integer p2Answer,
@@ -402,7 +525,6 @@ public class KoZnaZnaFragment extends Fragment {
         String resultMessage = "";
 
         if (p1Correct && p2Correct) {
-            // Oba tačno - brži dobija
             long t1 = p1Time != null ? p1Time : Long.MAX_VALUE;
             long t2 = p2Time != null ? p2Time : Long.MAX_VALUE;
             if (t1 <= t2) {
@@ -434,7 +556,6 @@ public class KoZnaZnaFragment extends Fragment {
             }
         }
 
-        // Pokaži kratko poruku o rezultatu
         if (tvPhase != null) {
             tvPhase.setText(resultMessage);
         }
@@ -457,7 +578,6 @@ public class KoZnaZnaFragment extends Fragment {
             update.put("questionStartTime", System.currentTimeMillis());
         }
 
-        // Mala pauza pre sledećeg pitanja da igrač vidi poruku
         gameStateRef.updateChildren(update);
     }
 
@@ -481,7 +601,7 @@ public class KoZnaZnaFragment extends Fragment {
 
     private void updateScores() {
         if (tvScores != null) {
-            tvScores.setText("Igrač 1: " + player1Score + "  |  Igrač 2: " + player2Score);
+            tvScores.setText("Igrač 1: " +  player1Score + "  |  Igrač 2: " + player2Score);
         }
     }
 
@@ -521,5 +641,26 @@ public class KoZnaZnaFragment extends Fragment {
         if (gameStateListener != null) {
             gameStateRef.removeEventListener(gameStateListener);
         }
+        if (scoresListener != null && sessionScoresRef != null)
+            sessionScoresRef.removeEventListener(scoresListener);
+    }
+
+    private void listenToSessionScores(String sessionId) {
+        sessionScoresRef = FirebaseDatabase.getInstance(
+                "https://slagalica-8871d-default-rtdb.europe-west1.firebasedatabase.app"
+        ).getReference("sessions").child(sessionId).child("scores");
+
+        scoresListener = new ValueEventListener() {
+            @Override
+            public void onDataChange(@NonNull DataSnapshot snap) {
+                Integer s1 = snap.child("player1").getValue(Integer.class);
+                Integer s2 = snap.child("player2").getValue(Integer.class);
+                if (tvScores != null)
+                    tvScores.setText("Igrač 1: " + (s1 != null ? s1 : 0)
+                            + "  |  Igrač 2: " + (s2 != null ? s2 : 0));
+            }
+            @Override public void onCancelled(@NonNull DatabaseError e) {}
+        };
+        sessionScoresRef.addValueEventListener(scoresListener);
     }
 }

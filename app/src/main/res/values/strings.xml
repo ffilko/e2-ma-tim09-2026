@@ -33,4 +33,32 @@
         <item>Nagrade</item>
         <item>Ostalo</item>
     </string-array>
+    <string-array name="regions">
+        <item>Južnobački</item>
+        <item>Severnobački</item>
+        <item>Sremski</item>
+        <item>Zapadnobački</item>
+        <item>Južnobanatski</item>
+        <item>Severnobanatski</item>
+        <item>Srednjobanatski</item>
+        <item>Mačvanski</item>
+        <item>Kolubarski</item>
+        <item>Moravički</item>
+        <item>Zlatiborski</item>
+        <item>Raški</item>
+        <item>Rasinski</item>
+        <item>Pomoravski</item>
+        <item>Nišavski</item>
+        <item>Pirotski</item>
+        <item>Toplički</item>
+        <item>Jablanički</item>
+        <item>Pčinjski</item>
+        <item>Braničevski</item>
+        <item>Podunavski</item>
+        <item>Borski</item>
+        <item>Zaječarski</item>
+        <item>Šumadijski</item>
+        <item>Beograd</item>
+        <item>Druga država</item>
+    </string-array>
 </resources>
