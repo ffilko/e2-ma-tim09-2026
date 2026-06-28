@@ -1,0 +1,339 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:fillViewport="true"
+    android:background="@color/app_background">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="16dp">
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Profil"
+            android:textSize="32sp"
+            android:textStyle="bold"
+            android:textColor="@color/slagalica_color"
+            android:gravity="center"
+            android:layout_marginBottom="16dp" />
+
+        <!-- KARTICA 1: Profil info -->
+        <com.google.android.material.card.MaterialCardView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="16dp"
+            app:cardBackgroundColor="@color/white"
+            app:cardCornerRadius="20dp"
+            app:cardElevation="4dp">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:gravity="center_horizontal"
+                android:padding="20dp">
+
+                <com.google.android.material.card.MaterialCardView
+                    android:id="@+id/cardAvatar"
+                    android:layout_width="120dp"
+                    android:layout_height="120dp"
+                    android:layout_marginBottom="12dp"
+                    app:cardCornerRadius="60dp"
+                    app:cardBackgroundColor="@color/slagalica_color"
+                    app:strokeColor="@color/slagalica_color"
+                    app:strokeWidth="3dp">
+
+                    <TextView
+                        android:id="@+id/tvAvatarEmoji"
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent"
+                        android:gravity="center"
+                        android:text="🧑"
+                        android:textSize="52sp" />
+                </com.google.android.material.card.MaterialCardView>
+
+                <Button
+                    android:id="@+id/btnEditAvatar"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Promeni avatar"
+                    android:textColor="@color/white"
+                    android:backgroundTint="@color/slagalica_color"
+                    android:layout_marginBottom="16dp" />
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Korisničko ime"
+                    android:textStyle="bold"
+                    android:textSize="14sp"
+                    android:textColor="@color/black" />
+                <TextView
+                    android:id="@+id/tvUsername"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="..."
+                    android:textSize="18sp"
+                    android:layout_marginBottom="8dp" />
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Email adresa"
+                    android:textStyle="bold"
+                    android:textSize="14sp"
+                    android:textColor="@color/black" />
+                <TextView
+                    android:id="@+id/tvEmail"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="..."
+                    android:textSize="16sp"
+                    android:layout_marginBottom="8dp" />
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Region"
+                    android:textStyle="bold"
+                    android:textSize="14sp"
+                    android:textColor="@color/black" />
+                <TextView
+                    android:id="@+id/tvRegion"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="..."
+                    android:textSize="16sp"
+                    android:layout_marginBottom="8dp" />
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Okvir avatara"
+                    android:textStyle="bold"
+                    android:textSize="14sp"
+                    android:textColor="@color/black" />
+                <TextView
+                    android:id="@+id/tvAvatarFrame"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Podrazumevani"
+                    android:textSize="16sp" />
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
+
+        <!-- KARTICA 2: Tokeni, Zvezde, Liga -->
+        <com.google.android.material.card.MaterialCardView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="16dp"
+            app:cardBackgroundColor="@color/white"
+            app:cardCornerRadius="20dp"
+            app:cardElevation="4dp">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:padding="16dp"
+                android:weightSum="3">
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:gravity="center"
+                    android:orientation="vertical">
+                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+                        android:text="Tokeni" android:textStyle="bold" android:textColor="@color/black" />
+                    <TextView android:id="@+id/tvTokens" android:layout_width="wrap_content" android:layout_height="wrap_content"
+                        android:text="0" android:textSize="24sp" android:textColor="@color/slagalica_color" android:textStyle="bold" />
+                </LinearLayout>
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:gravity="center"
+                    android:orientation="vertical">
+                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+                        android:text="Zvezde" android:textStyle="bold" android:textColor="@color/black" />
+                    <TextView android:id="@+id/tvStars" android:layout_width="wrap_content" android:layout_height="wrap_content"
+                        android:text="0" android:textSize="24sp" android:textColor="@color/slagalica_color" android:textStyle="bold" />
+                </LinearLayout>
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:gravity="center"
+                    android:orientation="vertical">
+                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+                        android:text="Liga" android:textStyle="bold" android:textColor="@color/black" />
+                    <TextView android:id="@+id/tvLeague" android:layout_width="wrap_content" android:layout_height="wrap_content"
+                        android:text="Početnik" android:textSize="16sp" android:textColor="@color/slagalica_color"
+                        android:textStyle="bold" android:gravity="center" />
+                </LinearLayout>
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
+
+        <!-- KARTICA 3: QR kod -->
+        <com.google.android.material.card.MaterialCardView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="16dp"
+            app:cardBackgroundColor="@color/white"
+            app:cardCornerRadius="20dp"
+            app:cardElevation="4dp">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="16dp"
+                android:gravity="center_horizontal">
+
+                <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
+                    android:text="QR kod za poziv prijatelja" android:textSize="18sp"
+                    android:textStyle="bold" android:textColor="@color/black"
+                    android:gravity="center" android:layout_marginBottom="12dp" />
+
+                <ImageView
+                    android:id="@+id/ivQrCode"
+                    android:layout_width="200dp"
+                    android:layout_height="200dp"
+                    android:background="@color/white"
+                    android:contentDescription="QR kod" />
+
+                <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
+                    android:text="Skeniranjem koda drugi igrači mogu da te dodaju za prijatelja."
+                    android:textSize="13sp" android:gravity="center" android:layout_marginTop="12dp" />
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
+
+        <!-- KARTICA 4: Statistika - proseci -->
+        <com.google.android.material.card.MaterialCardView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="12dp"
+            app:cardBackgroundColor="@color/white"
+            app:cardCornerRadius="20dp"
+            app:cardElevation="4dp">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="16dp">
+
+                <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
+                    android:text="Prosečni bodovi po igrama" android:textSize="18sp"
+                    android:textStyle="bold" android:textColor="@color/slagalica_color"
+                    android:layout_marginBottom="12dp" />
+
+                <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+                    android:orientation="horizontal" android:weightSum="3" android:layout_marginBottom="8dp">
+                    <TextView android:id="@+id/tvAvgKzz" android:layout_width="0dp" android:layout_height="wrap_content"
+                        android:layout_weight="1" android:gravity="center" android:text="Ko zna zna\n0" android:textSize="12sp" />
+                    <TextView android:id="@+id/tvAvgSpoj" android:layout_width="0dp" android:layout_height="wrap_content"
+                        android:layout_weight="1" android:gravity="center" android:text="Spojnice\n0" android:textSize="12sp" />
+                    <TextView android:id="@+id/tvAvgMb" android:layout_width="0dp" android:layout_height="wrap_content"
+                        android:layout_weight="1" android:gravity="center" android:text="Moj broj\n0" android:textSize="12sp" />
+                </LinearLayout>
+                <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+                    android:orientation="horizontal" android:weightSum="3">
+                    <TextView android:id="@+id/tvAvgKpk" android:layout_width="0dp" android:layout_height="wrap_content"
+                        android:layout_weight="1" android:gravity="center" android:text="Korak po korak\n0" android:textSize="12sp" />
+                    <TextView android:id="@+id/tvAvgSk" android:layout_width="0dp" android:layout_height="wrap_content"
+                        android:layout_weight="1" android:gravity="center" android:text="Skočko\n0" android:textSize="12sp" />
+                    <TextView android:id="@+id/tvAvgAs" android:layout_width="0dp" android:layout_height="wrap_content"
+                        android:layout_weight="1" android:gravity="center" android:text="Asocijacije\n0" android:textSize="12sp" />
+                </LinearLayout>
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
+
+        <!-- KARTICA 5: Detaljna statistika -->
+        <com.google.android.material.card.MaterialCardView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="12dp"
+            app:cardBackgroundColor="@color/white"
+            app:cardCornerRadius="20dp"
+            app:cardElevation="4dp">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="16dp">
+
+                <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
+                    android:text="Detaljna statistika" android:textSize="18sp"
+                    android:textStyle="bold" android:textColor="@color/slagalica_color"
+                    android:layout_marginBottom="12dp" />
+
+                <TextView android:id="@+id/tvStatKoZnaZna" android:layout_width="match_parent" android:layout_height="wrap_content"
+                    android:text="🎯 Ko zna zna: 0 / 0" android:textSize="14sp" android:layout_marginBottom="6dp" />
+                <TextView android:id="@+id/tvStatMojBroj" android:layout_width="match_parent" android:layout_height="wrap_content"
+                    android:text="🔢 Moj broj: 0%" android:textSize="14sp" android:layout_marginBottom="6dp" />
+                <TextView android:id="@+id/tvStatKorak" android:layout_width="match_parent" android:layout_height="wrap_content"
+                    android:text="👣 Korak po korak: 0%" android:textSize="14sp" android:layout_marginBottom="6dp" />
+                <TextView android:id="@+id/tvStatAsocijacije" android:layout_width="match_parent" android:layout_height="wrap_content"
+                    android:text="🧩 Asocijacije: 0 / 0" android:textSize="14sp" android:layout_marginBottom="6dp" />
+                <TextView android:id="@+id/tvStatSkocko" android:layout_width="match_parent" android:layout_height="wrap_content"
+                    android:text="⭐ Skočko: 0%" android:textSize="14sp" android:layout_marginBottom="6dp" />
+                <TextView android:id="@+id/tvStatSpojnice" android:layout_width="match_parent" android:layout_height="wrap_content"
+                    android:text="🔗 Spojnice: 0%" android:textSize="14sp" />
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
+
+        <!-- KARTICA 6: Ukupna statistika -->
+        <com.google.android.material.card.MaterialCardView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="16dp"
+            app:cardBackgroundColor="@color/white"
+            app:cardCornerRadius="20dp"
+            app:cardElevation="4dp">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:padding="16dp"
+                android:weightSum="2">
+
+                <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content"
+                    android:layout_weight="1" android:gravity="center" android:orientation="vertical">
+                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+                        android:text="Odigrane partije" android:textStyle="bold" android:textColor="@color/black" android:textSize="12sp" />
+                    <TextView android:id="@+id/tvTotalGames" android:layout_width="wrap_content" android:layout_height="wrap_content"
+                        android:text="0" android:textSize="28sp" android:textColor="@color/slagalica_color" android:textStyle="bold" />
+                </LinearLayout>
+
+                <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content"
+                    android:layout_weight="1" android:gravity="center" android:orientation="vertical">
+                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+                        android:text="Pobede / Porazi" android:textStyle="bold" android:textColor="@color/black" android:textSize="12sp" />
+                    <TextView android:id="@+id/tvWinLoss" android:layout_width="wrap_content" android:layout_height="wrap_content"
+                        android:text="0% / 0%" android:textSize="20sp" android:textColor="@color/slagalica_color" android:textStyle="bold" />
+                </LinearLayout>
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
+
+        <Button
+            android:id="@+id/btnLogout"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Logout"
+            android:textColor="@color/white"
+            android:backgroundTint="#C62828"
+            android:layout_marginBottom="24dp" />
+
+    </LinearLayout>
+</ScrollView>

@@ -1,0 +1,64 @@
+<resources>
+    <string name="app_name">Slagalica</string>
+    <string name="title_activity_login">LoginActivity</string>
+    <string name="prompt_email">Email</string>
+    <string name="prompt_password">Password</string>
+    <string name="action_sign_in">Sign in or register</string>
+    <string name="action_sign_in_short">Sign in</string>
+    <string name="welcome">"Welcome !"</string>
+    <string name="invalid_username">Not a valid username</string>
+    <string name="invalid_password">Password must be >5 characters</string>
+    <string name="login_failed">"Login failed"</string>
+    <string name="hello_blank_fragment">Hello blank fragment</string>
+    <string name="column_a_hint">Kolona A</string>
+    <string name="column_b_hint">Kolona B</string>
+    <string name="column_c_hint">Kolona C</string>
+    <string name="column_d_hint">Kolona D</string>
+    <string name="final_answer_hint">Finalni odgovor</string>
+    <string name="submit_associations">Potvrdi</string>
+    <string name="skocko_submit">Potvrdi</string>
+    <string name="skocko_delete">Obriši</string>
+    <string name="naslov_notifikacije">Obaveštenja</string>
+    <string name="oznaci_procitano">Označi kao pročitano</string>
+    <string name="notifications_desc">Notifikacije</string>
+    <string-array name="status_options">
+        <item>Svi statusi</item>
+        <item>Nepročitane</item>
+        <item>Pročitane</item>
+    </string-array>
+    <string-array name="category_options">
+        <item>Sve kategorije</item>
+        <item>Poruke u četu</item>
+        <item>Rangiranje</item>
+        <item>Nagrade</item>
+        <item>Ostalo</item>
+    </string-array>
+    <string-array name="regions">
+        <item>Južnobački</item>
+        <item>Severnobački</item>
+        <item>Sremski</item>
+        <item>Zapadnobački</item>
+        <item>Južnobanatski</item>
+        <item>Severnobanatski</item>
+        <item>Srednjobanatski</item>
+        <item>Mačvanski</item>
+        <item>Kolubarski</item>
+        <item>Moravički</item>
+        <item>Zlatiborski</item>
+        <item>Raški</item>
+        <item>Rasinski</item>
+        <item>Pomoravski</item>
+        <item>Nišavski</item>
+        <item>Pirotski</item>
+        <item>Toplički</item>
+        <item>Jablanički</item>
+        <item>Pčinjski</item>
+        <item>Braničevski</item>
+        <item>Podunavski</item>
+        <item>Borski</item>
+        <item>Zaječarski</item>
+        <item>Šumadijski</item>
+        <item>Beograd</item>
+        <item>Druga država</item>
+    </string-array>
+</resources>
