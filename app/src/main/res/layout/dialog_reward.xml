@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+
+    <com.example.slagalica.ConfettiView
+        android:id="@+id/confetti"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent" />
+
+    <androidx.cardview.widget.CardView
+        android:layout_width="300dp"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center"
+        app:cardCornerRadius="20dp"
+        app:cardElevation="12dp"
+        app:cardBackgroundColor="@color/card_bg"
+        xmlns:app="http://schemas.android.com/apk/res-auto">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:gravity="center_horizontal"
+            android:padding="24dp">
+
+            <ImageView
+                android:id="@+id/ivTrophy"
+                android:layout_width="96dp"
+                android:layout_height="96dp"
+                android:contentDescription="Pehar"
+                android:src="@drawable/ic_trophy" />
+
+            <TextView
+                android:id="@+id/tvRewardTitle"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp"
+                android:text="Čestitamo!"
+                android:textSize="22sp"
+                android:textStyle="bold"
+                android:textColor="@color/slagalica_color" />
+
+            <TextView
+                android:id="@+id/tvRewardMessage"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:gravity="center"
+                android:textSize="15sp"
+                android:textColor="@color/black"
+                android:text="" />
+
+            <TextView
+                android:id="@+id/tvRewardTokens"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp"
+                android:textSize="20sp"
+                android:textStyle="bold"
+                android:textColor="@color/gold"
+                android:text="+0 🪙" />
+
+            <Button
+                android:id="@+id/btnRewardOk"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="16dp"
+                android:paddingHorizontal="32dp"
+                android:text="Super!"
+                android:backgroundTint="@color/slagalica_color"
+                android:textColor="@color/white" />
+        </LinearLayout>
+    </androidx.cardview.widget.CardView>
+</FrameLayout>

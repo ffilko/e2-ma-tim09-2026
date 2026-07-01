@@ -4,4 +4,9 @@
     <color name="white">#eff2f1</color>
     <color name="app_background">#f2d89d</color>
     <color name="slagalica_color">#2596be</color>
+    <color name="gold">#FFC107</color>
+    <color name="silver">#B0BEC5</color>
+    <color name="bronze">#CD7F32</color>
+    <color name="rank_me_highlight">#FFF3D6</color>
+    <color name="card_bg">#FFFFFF</color>
 </resources>

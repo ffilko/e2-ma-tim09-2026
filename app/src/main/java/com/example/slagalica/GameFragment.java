@@ -378,6 +378,8 @@ public class GameFragment extends Fragment {
                     });
         }
 
+        new com.example.slagalica.data.LeaderboardManager().recordMatch(myUid, won, my);
+
         new TokenManager().applyMatchResult(myUid, won, my, (ok, msg) ->
                 showResults(snapshot));
     }

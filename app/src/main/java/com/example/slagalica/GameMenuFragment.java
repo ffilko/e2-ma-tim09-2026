@@ -65,6 +65,8 @@ public class GameMenuFragment extends Fragment {
                 ((MainActivity) requireActivity()).navigate(new ChatListFragment(), true));
         rootView.findViewById(R.id.btnChallenges).setOnClickListener(v ->
                 ((MainActivity) requireActivity()).navigate(new ChallengesFragment(), true));
+        rootView.findViewById(R.id.btnLeaderboard).setOnClickListener(v ->
+                ((MainActivity) requireActivity()).navigate(new LeaderboardFragment(), true));
         FriendlyMatchManager friendlyMatchManager = new FriendlyMatchManager();
         FirebaseUser finalUser = user;
         friendlyMatchManager.listenForInvites(uid, (fromUid, fromName, inviteId) -> {
@@ -104,6 +106,12 @@ public class GameMenuFragment extends Fragment {
                     "Liga", "Prešao/la si u Srebrnu ligu!");
             return true;
         });
+        com.example.slagalica.data.LeaderboardManager leaderboardManager =
+                new com.example.slagalica.data.LeaderboardManager();
+        leaderboardManager.processCycleRewards(
+                requireContext().getApplicationContext(), uid,
+                () -> showPendingRewards(uid, leaderboardManager));
+
         rootView.findViewById(R.id.btnProfileIcon).setOnClickListener(v ->
                 ((MainActivity) requireActivity()).navigate(new ProfileFragment(), true));
         rootView.findViewById(R.id.btnLogout).setOnClickListener(v -> {
@@ -112,6 +120,16 @@ public class GameMenuFragment extends Fragment {
         });
 
         return rootView;
+    }
+
+    private void showPendingRewards(String uid,
+                                    com.example.slagalica.data.LeaderboardManager lm) {
+        if (!isAdded()) return;
+        lm.fetchNextRewardPopup(uid, popup -> {
+            if (!isAdded() || popup == null) return;
+            RewardDialog.show(requireContext(), popup, () ->
+                    lm.consumeRewardPopup(uid, popup.docId, () -> showPendingRewards(uid, lm)));
+        });
     }
 
     private void startSearch() {
