@@ -67,6 +67,8 @@ public class GameMenuFragment extends Fragment {
                 ((MainActivity) requireActivity()).navigate(new ChallengesFragment(), true));
         rootView.findViewById(R.id.btnLeaderboard).setOnClickListener(v ->
                 ((MainActivity) requireActivity()).navigate(new LeaderboardFragment(), true));
+        rootView.findViewById(R.id.btnMissions).setOnClickListener(v ->
+                ((MainActivity) requireActivity()).navigate(new MissionsFragment(), true));
         FriendlyMatchManager friendlyMatchManager = new FriendlyMatchManager();
         FirebaseUser finalUser = user;
         friendlyMatchManager.listenForInvites(uid, (fromUid, fromName, inviteId) -> {

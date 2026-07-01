@@ -124,6 +124,9 @@ public class ChatFragment extends Fragment {
         chatManager.sendMessage(region, chatId, text, myUsername);
         etMessage.setText("");
 
+        new com.example.slagalica.data.MissionManager()
+                .complete(myUid, com.example.slagalica.data.MissionManager.MISSION_CHAT);
+
         // Pošalji FCM notifikaciju kontaktu (ako nije u appu)
         sendPushToContact(text);
     }

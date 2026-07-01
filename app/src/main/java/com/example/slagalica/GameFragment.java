@@ -343,6 +343,8 @@ public class GameFragment extends Fragment {
                 snapshot.child("isFriendly").getValue(Boolean.class));
 
         if (isFriendly) {
+            new com.example.slagalica.data.MissionManager()
+                    .complete(myUid, com.example.slagalica.data.MissionManager.MISSION_FRIENDLY);
             showResults(snapshot);
             return;
         }
@@ -379,6 +381,11 @@ public class GameFragment extends Fragment {
         }
 
         new com.example.slagalica.data.LeaderboardManager().recordMatch(myUid, won, my);
+
+        if (won) {
+            new com.example.slagalica.data.MissionManager()
+                    .complete(myUid, com.example.slagalica.data.MissionManager.MISSION_WIN);
+        }
 
         new TokenManager().applyMatchResult(myUid, won, my, (ok, msg) ->
                 showResults(snapshot));
